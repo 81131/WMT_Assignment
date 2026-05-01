@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "CinemaApp",
+    "slug": "cinema-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D0D1A"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": true, "bundleIdentifier": "lk.cinema.app" },
+    "android": {
+      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#0D0D1A" },
+      "package": "lk.cinema.app"
+    },
+    "web": { "favicon": "./assets/favicon.png" },
+    "scheme": "cinemaapp",
+    "plugins": [
+      "expo-router",
+      "expo-barcode-scanner",
+      ["expo-camera", { "cameraPermission": "Allow CinemaApp to access your camera for ticket scanning." }]
+    ],
+    "experiments": { "typedRoutes": true }
+  }
+}
