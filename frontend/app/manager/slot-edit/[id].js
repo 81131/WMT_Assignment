@@ -21,6 +21,15 @@ const SelectList = ({ label, data, value, onChange, displayFn, styles, colors })
   </View>
 );
 
+// Convert a UTC ISO string to a value suitable for <input type="datetime-local">
+// datetime-local expects "YYYY-MM-DDTHH:mm" in LOCAL time, not UTC
+function toLocalDatetimeInputValue(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function SlotForm() {
   const { colors } = useTheme();
   const styles = useThemeStyles(getStyles);
@@ -114,7 +123,7 @@ export default function SlotForm() {
                   height: 48, color: colors.textPrimary, fontSize: 14, 
                   marginBottom: 16, width: '100%', outline: 'none', boxSizing: 'border-box'
                 }}
-                value={form.startTime ? form.startTime.slice(0, 16) : ''}
+                value={toLocalDatetimeInputValue(form.startTime)}
                 onChange={(e) => {
                   if (e.target.value) {
                     setForm(f => ({ ...f, startTime: new Date(e.target.value).toISOString() }));
