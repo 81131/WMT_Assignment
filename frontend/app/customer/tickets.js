@@ -89,7 +89,6 @@ export default function TicketsScreen() {
           <Ionicons name="barcode-outline" size={14} color={colors.textMuted} />
           <Text style={styles.code}>{item.ticketCode || 'Pending payment'}</Text>
         </View>
-        </View>
       </View>
       <View style={{ alignItems: 'center' }}>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
