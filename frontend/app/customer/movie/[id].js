@@ -134,20 +134,37 @@ export default function MovieDetail() {
           {movie.cast?.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Cast</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SIZES.md }} contentContainerStyle={{ paddingHorizontal: SIZES.md, gap: 16 }}>
-                {movie.cast.map((actor, idx) => (
-                  <View key={idx} style={{ alignItems: 'center', width: 80 }}>
-                    <View style={styles.castAvatar}>
-                      {actor.photoUrl ? (
-                        <Image source={{ uri: actor.photoUrl }} style={{ width: '100%', height: '100%' }} />
-                      ) : (
-                        <Ionicons name="person" size={24} color={colors.textMuted} />
-                      )}
+              {Platform.OS === 'web' ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingVertical: 4 }}>
+                  {movie.cast.map((actor, idx) => (
+                    <View key={idx} style={{ alignItems: 'center', width: 80 }}>
+                      <View style={styles.castAvatar}>
+                        {actor.photoUrl ? (
+                          <Image source={{ uri: actor.photoUrl }} style={{ width: '100%', height: '100%' }} />
+                        ) : (
+                          <Ionicons name="person" size={24} color={colors.textMuted} />
+                        )}
+                      </View>
+                      <Text style={styles.castName} numberOfLines={2}>{actor.name}</Text>
                     </View>
-                    <Text style={styles.castName} numberOfLines={2}>{actor.name}</Text>
-                  </View>
-                ))}
-              </ScrollView>
+                  ))}
+                </View>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SIZES.md }} contentContainerStyle={{ paddingHorizontal: SIZES.md, gap: 16 }}>
+                  {movie.cast.map((actor, idx) => (
+                    <View key={idx} style={{ alignItems: 'center', width: 80 }}>
+                      <View style={styles.castAvatar}>
+                        {actor.photoUrl ? (
+                          <Image source={{ uri: actor.photoUrl }} style={{ width: '100%', height: '100%' }} />
+                        ) : (
+                          <Ionicons name="person" size={24} color={colors.textMuted} />
+                        )}
+                      </View>
+                      <Text style={styles.castName} numberOfLines={2}>{actor.name}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
             </>
           )}
 

@@ -22,6 +22,9 @@ const reviewRoutes = require('./routes/reviewRoutes');
 
 const app = express();
 
+// Trust Railway's reverse proxy so X-Forwarded-For works correctly with rate limiting
+app.set('trust proxy', 1);
+
 // Connect to MongoDB
 connectDB();
 
