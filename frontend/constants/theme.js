@@ -22,6 +22,7 @@ export const darkColors = {
   seatLobby: '#03A9F4',
   seatBooked: '#1A1A1A',
   seatLocked: '#E67E22',
+  seatSelected: '#00BCD4',  // Distinct cyan — clearly different from VIP yellow
   seatMyHold: '#2ECC71',
   seatInactive: '#111111',
 

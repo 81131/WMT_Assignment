@@ -72,7 +72,7 @@ export default function SeatPicker() {
     if (seat.status === 'locked') return colors.seatLocked;
     if (seat.status === 'my_hold') return colors.seatMyHold;
     if (seat.status === 'inactive') return colors.seatInactive;
-    if (selected.includes(seat.seatId)) return colors.primary;
+    if (selected.includes(seat.seatId)) return colors.seatSelected || '#00BCD4';
     return SEAT_TYPE_COLORS[seat.type] || colors.seatRegular;
   };
 
@@ -147,7 +147,8 @@ export default function SeatPicker() {
           { color: colors.seatVip, label: 'VIP' },
           { color: colors.seatLoveseat, label: 'Loveseat' },
           { color: colors.seatProducer, label: 'Producer' },
-          { color: colors.primary, label: 'Selected' },
+          { color: colors.seatLobby, label: 'Lobby' },
+          { color: colors.seatSelected || '#00BCD4', label: 'Selected' },
           { color: colors.seatBooked, label: 'Booked' },
           { color: colors.seatLocked, label: 'Held' },
         ].map(({ color, label }) => (
