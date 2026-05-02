@@ -50,7 +50,6 @@ export default function MovieForm() {
           const { data } = await branchAPI.getAll();
           setBranches(data.branches);
         }
-        }
         
         try {
           const { data: actorData } = await movieAPI.getDistinctActors();
