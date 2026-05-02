@@ -44,6 +44,7 @@ app.use('/api/auth', authLimiter);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
+app.get('/', (req, res) => res.json({ success: true, message: 'Welcome to the Cinema Booking API!' }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
