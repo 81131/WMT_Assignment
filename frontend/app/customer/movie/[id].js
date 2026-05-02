@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, Image, TouchableOpacity,
-  StyleSheet, ActivityIndicator, FlatList, Alert,
+  StyleSheet, ActivityIndicator, FlatList, Alert, Platform, Modal
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { movieAPI, slotAPI, reviewAPI } from '../../../services/api';
@@ -17,30 +17,41 @@ export default function MovieDetail() {
   const router = useRouter();
   const [movie, setMovie] = useState(null);
   const [slots, setSlots] = useState([]);
+  const [allSlots, setAllSlots] = useState([]);
   const [stats, setStats] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [showTrailer, setShowTrailer] = useState(false);
 
-  const DATES = Array.from({ length: 7 }, (_, i) => {
+  // Generate next 14 days pool to check availability
+  const DATES = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() + i);
     return d;
   });
 
-  useEffect(() => { if (id) fetchAll(); }, [id, selectedDate]);
+  useEffect(() => { if (id) fetchAll(); }, [id]);
 
   const fetchAll = async () => {
     try {
-      const [movieRes, slotRes, statsRes, reviewRes] = await Promise.all([
+      const [movieRes, allSlotRes, statsRes, reviewRes] = await Promise.all([
         movieAPI.getById(id),
-        slotAPI.getAll({ date: selectedDate.toISOString().split('T')[0] }),
+        slotAPI.getAll(), // fetch ALL slots to compute available dates
         reviewAPI.getStats(id),
         reviewAPI.getAll({ movie: id }),
       ]);
       setMovie(movieRes.data.movie);
-      // filter slots for this movie only
-      setSlots(slotRes.data.timeSlots.filter((s) => s.movie?._id === id || s.movie === id));
+      const movieSlots = (allSlotRes.data.timeSlots || []).filter(
+        (s) => s.movie?._id === id || s.movie === id
+      );
+      setAllSlots(movieSlots);
+      // Default to first available date
+      const firstDate = movieSlots.length > 0
+        ? new Date(movieSlots.sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0].startTime)
+        : new Date();
+      setSelectedDate(firstDate);
+      setSlots(movieSlots.filter((s) => new Date(s.startTime).toDateString() === firstDate.toDateString()));
       setStats(statsRes.data.stats);
       setReviews(reviewRes.data.reviews.slice(0, 5));
     } catch (e) {
@@ -49,6 +60,16 @@ export default function MovieDetail() {
       setLoading(false);
     }
   };
+
+  // When user picks a date, filter slots client-side (no extra API call)
+  const handleDateSelect = (d) => {
+    setSelectedDate(d);
+    setSlots(allSlots.filter((s) => new Date(s.startTime).toDateString() === d.toDateString()));
+  };
+
+  // Compute which dates actually have slots
+  const availableDateStrings = new Set(allSlots.map((s) => new Date(s.startTime).toDateString()));
+  const availableDates = DATES.filter((d) => availableDateStrings.has(d.toDateString()));
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
   if (!movie) return <View style={styles.center}><Text style={{ color: colors.textPrimary }}>Movie not found.</Text></View>;
@@ -101,13 +122,21 @@ export default function MovieDetail() {
 
           <Text style={styles.description}>{movie.description}</Text>
 
+          {/* Trailer Button */}
+          {movie.trailerUrl && (
+            <TouchableOpacity style={styles.trailerBtn} onPress={() => setShowTrailer(true)}>
+              <Ionicons name="play-circle" size={22} color="#fff" />
+              <Text style={styles.trailerBtnText}>Play Trailer</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Cast */}
           {movie.cast?.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Cast</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SIZES.md }} contentContainerStyle={{ paddingHorizontal: SIZES.md, gap: 16 }}>
                 {movie.cast.map((actor, idx) => (
-                  <View key={idx} style={{ alignItems: 'center', width: 70 }}>
+                  <View key={idx} style={{ alignItems: 'center', width: 80 }}>
                     <View style={styles.castAvatar}>
                       {actor.photoUrl ? (
                         <Image source={{ uri: actor.photoUrl }} style={{ width: '100%', height: '100%' }} />
@@ -115,7 +144,7 @@ export default function MovieDetail() {
                         <Ionicons name="person" size={24} color={colors.textMuted} />
                       )}
                     </View>
-                    <Text style={styles.castName} numberOfLines={2} textAlign="center">{actor.name}</Text>
+                    <Text style={styles.castName} numberOfLines={2}>{actor.name}</Text>
                   </View>
                 ))}
               </ScrollView>
@@ -132,29 +161,33 @@ export default function MovieDetail() {
             </View>
           )}
 
-          {/* Date picker */}
+          {/* Date picker — only available dates */}
           <Text style={styles.sectionTitle}>Select Date</Text>
-          <FlatList
-            horizontal
-            data={DATES}
-            keyExtractor={(d) => d.toISOString()}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
-            renderItem={({ item: d }) => {
-              const isSelected = d.toDateString() === selectedDate.toDateString();
-              return (
-                <TouchableOpacity
-                  style={[styles.dateChip, isSelected && styles.dateChipActive]}
-                  onPress={() => setSelectedDate(d)}
-                >
-                  <Text style={[styles.dateDay, isSelected && { color: '#fff' }]}>
-                    {d.toLocaleDateString('en', { weekday: 'short' })}
-                  </Text>
-                  <Text style={[styles.dateNum, isSelected && { color: '#fff' }]}>{d.getDate()}</Text>
-                </TouchableOpacity>
-              );
-            }}
-          />
+          {availableDates.length === 0 ? (
+            <Text style={styles.noSlots}>No upcoming showtimes scheduled.</Text>
+          ) : (
+            <FlatList
+              horizontal
+              data={availableDates}
+              keyExtractor={(d) => d.toISOString()}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+              renderItem={({ item: d }) => {
+                const isSelected = selectedDate && d.toDateString() === selectedDate.toDateString();
+                return (
+                  <TouchableOpacity
+                    style={[styles.dateChip, isSelected && styles.dateChipActive]}
+                    onPress={() => handleDateSelect(d)}
+                  >
+                    <Text style={[styles.dateDay, isSelected && { color: '#000' }]}>
+                      {d.toLocaleDateString('en', { weekday: 'short' })}
+                    </Text>
+                    <Text style={[styles.dateNum, isSelected && { color: '#000' }]}>{d.getDate()}</Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          )}
 
           {/* Time Slots */}
           <Text style={styles.sectionTitle}>Showtimes</Text>
@@ -218,9 +251,50 @@ export default function MovieDetail() {
           )}
           <View style={{ height: 30 }} />
         </View>
-      </ScrollView>
-    </View>
-  );
+        </ScrollView>
+
+        {/* Trailer Modal */}
+        {movie.trailerUrl && showTrailer && (
+          <Modal
+            visible={showTrailer}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowTrailer(false)}
+          >
+            <View style={styles.trailerOverlay}>
+              <View style={styles.trailerContainer}>
+                <TouchableOpacity style={styles.trailerClose} onPress={() => setShowTrailer(false)}>
+                  <Ionicons name="close-circle" size={32} color="#fff" />
+                </TouchableOpacity>
+                {Platform.OS === 'web' ? (
+                  <iframe
+                    src={`https://www.youtube.com/embed/${extractYoutubeId(movie.trailerUrl)}?autoplay=1`}
+                    style={{ width: '100%', height: '100%', border: 'none' }}
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                  />
+                ) : (
+                  // On native, open in browser since expo-av or WebView may not be installed
+                  (() => {
+                    const { Linking } = require('react-native');
+                    Linking.openURL(movie.trailerUrl);
+                    setShowTrailer(false);
+                    return null;
+                  })()
+                )}
+              </View>
+            </View>
+          </Modal>
+        )}
+      </View>
+    );
+}
+
+// Extract YouTube video ID from full URL or short URL
+function extractYoutubeId(url) {
+  if (!url) return '';
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([\w-]{11})/);
+  return match ? match[1] : url;
 }
 
 const getStyles = (colors) => StyleSheet.create({
@@ -244,7 +318,12 @@ const getStyles = (colors) => StyleSheet.create({
   description: { color: colors.textSecondary, fontSize: 14, lineHeight: 22, marginBottom: 16 },
   sectionTitle: { fontSize: 17, fontWeight: 'bold', color: colors.textPrimary, marginTop: 16, marginBottom: 10 },
   castAvatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: colors.surfaceElevated, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', marginBottom: 6, borderWidth: 1, borderColor: colors.border },
-  castName: { color: colors.textPrimary, fontSize: 11, textAlign: 'center' },
+  trailerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#CC0000', borderRadius: SIZES.radius, paddingVertical: 12, paddingHorizontal: 18, alignSelf: 'flex-start', marginVertical: 12 },
+  trailerBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
+  trailerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
+  trailerContainer: { width: '90%', aspectRatio: 16 / 9, position: 'relative', backgroundColor: '#000', borderRadius: 8, overflow: 'hidden' },
+  trailerClose: { position: 'absolute', top: -40, right: 0, zIndex: 10 },
+  castName: { color: colors.textPrimary, fontSize: 11, textAlign: 'center', marginTop: 4 },
   statsCard: { backgroundColor: colors.card, borderRadius: SIZES.radius, padding: 14, borderWidth: 1, borderColor: colors.border },
   starRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   starLabel: { color: colors.textSecondary, fontSize: 13, width: 70 },

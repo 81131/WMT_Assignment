@@ -149,7 +149,7 @@ export default function CustomerHome() {
       {/* Header */}
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ color: colors.primary, fontSize: 24, fontWeight: '900', letterSpacing: 2 }}>PVR</Text>
+          <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800', letterSpacing: 1 }}>CinemaApp</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 16 }}>
           <TouchableOpacity onPress={() => router.push('/customer/tickets')}>
