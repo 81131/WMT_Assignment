@@ -11,17 +11,19 @@ import { useTheme } from '../../context/ThemeContext';
 import { useThemeStyles } from '../../utils/themeUtils';
 
 export default function LoginScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark, toggleTheme } = useTheme();
   const styles = useThemeStyles(getStyles);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const { login } = useAuth();
   const router = useRouter();
 
   const handleLogin = async () => {
-    if (!email || !password) return Alert.alert('Error', 'Please fill in all fields.');
+    setErrorMsg('');
+    if (!email || !password) return setErrorMsg('Please fill in all fields.');
     setLoading(true);
     try {
       const user = await login(email.trim().toLowerCase(), password);
@@ -32,7 +34,7 @@ export default function LoginScreen() {
         default: router.replace('/customer/home');
       }
     } catch (err) {
-      Alert.alert('Login Failed', err.response?.data?.message || 'Invalid credentials.');
+      setErrorMsg(err.response?.data?.message || 'Invalid credentials.');
     } finally {
       setLoading(false);
     }
@@ -40,6 +42,9 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
+        <Ionicons name={isDark ? 'sunny' : 'moon'} size={24} color={colors.textPrimary} />
+      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Logo area */}
         <View style={styles.logoArea}>
@@ -54,6 +59,7 @@ export default function LoginScreen() {
         <View style={styles.formContainer}>
           <View style={styles.card}>
             <Text style={styles.title}>Welcome Back</Text>
+            {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
             <View style={styles.inputWrapper}>
               <Ionicons name="mail-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
@@ -103,6 +109,8 @@ export default function LoginScreen() {
 
 const getStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  themeToggle: { position: 'absolute', top: Platform.OS === 'web' ? 20 : 50, right: 20, zIndex: 10, padding: 8, backgroundColor: colors.card, borderRadius: 20, borderWidth: 1, borderColor: colors.border },
+  errorText: { color: colors.error, fontSize: 14, marginBottom: SIZES.sm, textAlign: 'center' },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: SIZES.md },
   logoArea: { alignItems: 'center', marginBottom: SIZES.xl },
   logoCircle: {

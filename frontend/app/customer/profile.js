@@ -5,11 +5,15 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { authAPI } from '../../services/api';
-import { COLORS, SIZES } from '../../constants/theme';
+import { SIZES } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTheme } from '../../context/ThemeContext';
+import { useThemeStyles } from '../../utils/themeUtils';
 
 export default function ProfileScreen() {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(getStyles);
   const { user, logout } = useAuth();
   const router = useRouter();
   const [name, setName] = useState(user?.name || '');
@@ -37,7 +41,7 @@ export default function ProfileScreen() {
 
   const InfoRow = ({ icon, label, value }) => (
     <View style={styles.infoRow}>
-      <View style={styles.infoIcon}><Ionicons name={icon} size={18} color={COLORS.primary} /></View>
+      <View style={styles.infoIcon}><Ionicons name={icon} size={18} color={colors.primary} /></View>
       <View>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue}>{value}</Text>
@@ -77,7 +81,7 @@ export default function ProfileScreen() {
             value={name}
             onChangeText={setName}
             placeholder="Your full name"
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={colors.textMuted}
           />
           <TouchableOpacity style={styles.saveBtn} onPress={handleUpdate} disabled={saving}>
             {saving
@@ -89,14 +93,14 @@ export default function ProfileScreen() {
 
         {/* My Tickets shortcut */}
         <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/customer/tickets')}>
-          <Ionicons name="ticket-outline" size={20} color={COLORS.accent} />
+          <Ionicons name="ticket-outline" size={20} color={colors.accent} />
           <Text style={styles.menuItemText}>My Tickets</Text>
-          <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
+          <Ionicons name="log-out-outline" size={20} color={colors.error} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
 
@@ -106,27 +110,27 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container:      { flex: 1, backgroundColor: COLORS.background },
+const getStyles = (colors) => StyleSheet.create({
+  container:      { flex: 1, backgroundColor: colors.background },
   header:         { padding: SIZES.md, paddingTop: 55 },
-  headerTitle:    { fontSize: 24, fontWeight: 'bold', color: COLORS.textPrimary },
+  headerTitle:    { fontSize: 24, fontWeight: 'bold', color: colors.textPrimary },
   avatarSection:  { alignItems: 'center', paddingVertical: SIZES.lg },
-  avatar:         { width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.primary + '33', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: COLORS.primary, marginBottom: 10 },
-  avatarText:     { fontSize: 32, fontWeight: 'bold', color: COLORS.primary },
-  userName:       { fontSize: 22, fontWeight: 'bold', color: COLORS.textPrimary },
-  roleBadge:      { marginTop: 6, backgroundColor: COLORS.surfaceElevated, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 3 },
-  roleText:       { fontSize: 11, color: COLORS.textSecondary, letterSpacing: 1 },
-  card:           { backgroundColor: COLORS.card, borderRadius: SIZES.radiusLg, padding: SIZES.md, marginBottom: SIZES.md, borderWidth: 1, borderColor: COLORS.border },
-  sectionTitle:   { fontSize: 14, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 12 },
-  infoRow:        { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, borderBottomWidth: 1, borderColor: COLORS.border },
-  infoIcon:       { width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.primary + '22', justifyContent: 'center', alignItems: 'center' },
-  infoLabel:      { fontSize: 11, color: COLORS.textMuted },
-  infoValue:      { fontSize: 14, color: COLORS.textPrimary, fontWeight: '500', marginTop: 2 },
-  input:          { backgroundColor: COLORS.surface, borderRadius: SIZES.radius, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 14, height: 48, color: COLORS.textPrimary, fontSize: 14, marginBottom: 12 },
-  saveBtn:        { backgroundColor: COLORS.primary, borderRadius: SIZES.radius, height: 46, justifyContent: 'center', alignItems: 'center' },
+  avatar:         { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primary + '33', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: colors.primary, marginBottom: 10 },
+  avatarText:     { fontSize: 32, fontWeight: 'bold', color: colors.primary },
+  userName:       { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary },
+  roleBadge:      { marginTop: 6, backgroundColor: colors.surfaceElevated, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 3 },
+  roleText:       { fontSize: 11, color: colors.textSecondary, letterSpacing: 1 },
+  card:           { backgroundColor: colors.card, borderRadius: SIZES.radiusLg, padding: SIZES.md, marginBottom: SIZES.md, borderWidth: 1, borderColor: colors.border },
+  sectionTitle:   { fontSize: 14, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 12 },
+  infoRow:        { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, borderBottomWidth: 1, borderColor: colors.border },
+  infoIcon:       { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primary + '22', justifyContent: 'center', alignItems: 'center' },
+  infoLabel:      { fontSize: 11, color: colors.textMuted },
+  infoValue:      { fontSize: 14, color: colors.textPrimary, fontWeight: '500', marginTop: 2 },
+  input:          { backgroundColor: colors.surface, borderRadius: SIZES.radius, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14, height: 48, color: colors.textPrimary, fontSize: 14, marginBottom: 12 },
+  saveBtn:        { backgroundColor: colors.primary, borderRadius: SIZES.radius, height: 46, justifyContent: 'center', alignItems: 'center' },
   saveBtnText:    { color: '#fff', fontWeight: 'bold', fontSize: 15 },
-  menuItem:       { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
-  menuItemText:   { flex: 1, fontSize: 15, color: COLORS.textPrimary },
-  logoutBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, borderRadius: SIZES.radius, borderWidth: 1, borderColor: COLORS.error + '55', backgroundColor: COLORS.error + '11', marginTop: SIZES.sm },
-  logoutText:     { color: COLORS.error, fontWeight: 'bold', fontSize: 15 },
+  menuItem:       { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.card, borderRadius: SIZES.radius, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
+  menuItemText:   { flex: 1, fontSize: 15, color: colors.textPrimary },
+  logoutBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, borderRadius: SIZES.radius, borderWidth: 1, borderColor: colors.error + '55', backgroundColor: colors.error + '11', marginTop: SIZES.sm },
+  logoutText:     { color: colors.error, fontWeight: 'bold', fontSize: 15 },
 });

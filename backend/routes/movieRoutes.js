@@ -8,7 +8,7 @@ const multer = require('multer');
 
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: { folder: 'cinema/posters', allowed_formats: ['jpg', 'jpeg', 'png', 'webp'] },
+  params: { folder: 'cinema/posters', allowedFormats: ['jpg', 'jpeg', 'png', 'webp'] },
 });
 const upload = multer({ storage });
 

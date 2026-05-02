@@ -12,7 +12,12 @@ exports.getMovies = async (req, res) => {
   }
 
   if (req.query.genre) query.genre = { $in: [req.query.genre] };
-  if (req.query.search) query.$text = { $search: req.query.search };
+  if (req.query.search) {
+    query.$or = [
+      { title: { $regex: req.query.search, $options: 'i' } },
+      { description: { $regex: req.query.search, $options: 'i' } }
+    ];
+  }
 
   const movies = await Movie.find(query).populate('branches', 'name city');
   res.json({ success: true, count: movies.length, movies });

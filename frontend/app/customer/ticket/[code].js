@@ -29,7 +29,8 @@ export default function TicketDetail() {
       setTicket(data.ticket);
     } catch {
       Alert.alert('Error', 'Ticket not found.');
-      router.back();
+      if (router.canGoBack()) router.back();
+      else router.replace('/customer/home');
     } finally {
       setLoading(false);
     }
@@ -69,12 +70,12 @@ export default function TicketDetail() {
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
   if (!ticket) return null;
 
-  const canReview = ticket.status === 'used';
+  const canReview = ticket.status === 'used' || ticket.status === 'confirmed';
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/customer/home')}>
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Your Ticket</Text>

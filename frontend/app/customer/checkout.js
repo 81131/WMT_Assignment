@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator,
+  Alert, ActivityIndicator, Platform
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { WebView } from 'react-native-webview';
@@ -40,7 +40,8 @@ export default function CheckoutScreen() {
       setPayParams(payRes.data.paymentParams);
     } catch (err) {
       Alert.alert('Error', err.response?.data?.message || 'Could not initiate payment.');
-      router.back();
+      if (router.canGoBack()) router.back();
+      else router.replace('/customer/home');
     } finally {
       setLoading(false);
     }
@@ -79,12 +80,38 @@ export default function CheckoutScreen() {
           <Text style={styles.webviewTitle}>Secure Payment</Text>
           <Ionicons name="shield-checkmark" size={20} color={colors.success} />
         </View>
-        <WebView
-          source={{ html: buildPayhereHtml(payParams) }}
-          onNavigationStateChange={handleWebViewNav}
-          startInLoadingState
-          renderLoading={() => <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />}
-        />
+        {Platform.OS === 'web' ? (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={{ marginTop: 20, color: colors.textSecondary }}>Redirecting to secure payment gateway...</Text>
+            {/* Inject and submit hidden form */}
+            <iframe
+              name="payhere_frame"
+              style={{ display: 'none' }}
+              onLoad={(e) => {
+                if (e.target.contentWindow.location.href.includes('payment/success')) {
+                  setShowPayhere(false);
+                  router.replace('/customer/tickets');
+                }
+              }}
+            />
+            <form id="payhere_form" method="POST" action={payParams.checkout_url} target={Platform.OS === 'web' ? '_self' : 'payhere_frame'} style={{ display: 'none' }}>
+              {Object.entries(payParams)
+                .filter(([k]) => !['checkout_url', 'sandbox'].includes(k))
+                .map(([k, v]) => (
+                  <input key={k} type="hidden" name={k} value={v} />
+                ))}
+            </form>
+            {Platform.OS === 'web' && setTimeout(() => document.getElementById('payhere_form').submit(), 1000) && null}
+          </View>
+        ) : (
+          <WebView
+            source={{ html: buildPayhereHtml(payParams) }}
+            onNavigationStateChange={handleWebViewNav}
+            startInLoadingState
+            renderLoading={() => <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />}
+          />
+        )}
       </View>
     );
   }
@@ -94,7 +121,7 @@ export default function CheckoutScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/customer/home')}>
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Checkout</Text>

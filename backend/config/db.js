@@ -8,6 +8,8 @@ const connectDB = async (attempt = 1) => {
     const conn = await mongoose.connect(process.env.MONGO_URI, {
       serverSelectionTimeoutMS: 10000, // 10s per attempt
       connectTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      family: 4, // Force IPv4 to prevent IPv6 DNS drops
     });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { slotAPI } from '../../services/api';
 import { SIZES } from '../../constants/theme';
@@ -26,13 +26,22 @@ export default function SlotsScreen() {
 
   useEffect(() => { fetchSlots(); }, []);
 
-  const handleDelete = (id) => Alert.alert('Delete Slot', 'Delete this time slot?', [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Delete', style: 'destructive', onPress: async () => {
-      try { await slotAPI.delete(id); setSlots((p) => p.filter((s) => s._id !== id)); }
-      catch (err) { Alert.alert('Error', err.response?.data?.message || 'Delete failed.'); }
-    }},
-  ]);
+  const handleDelete = async (id) => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Delete this time slot?')) {
+        try { await slotAPI.delete(id); setSlots((p) => p.filter((s) => s._id !== id)); }
+        catch (err) { window.alert(err.response?.data?.message || 'Delete failed.'); }
+      }
+    } else {
+      Alert.alert('Delete Slot', 'Delete this time slot?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: async () => {
+          try { await slotAPI.delete(id); setSlots((p) => p.filter((s) => s._id !== id)); }
+          catch (err) { Alert.alert('Error', err.response?.data?.message || 'Delete failed.'); }
+        }},
+      ]);
+    }
+  };
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
@@ -60,7 +69,7 @@ export default function SlotsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={22} color={colors.textPrimary} /></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/manager/dashboard')}><Ionicons name="arrow-back" size={22} color={colors.textPrimary} /></TouchableOpacity>
         <Text style={styles.headerTitle}>Time Slots</Text>
         <TouchableOpacity onPress={() => router.push('/manager/slot-add')}>
           <Ionicons name="add-circle" size={26} color={colors.primary} />

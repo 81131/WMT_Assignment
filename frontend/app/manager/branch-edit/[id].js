@@ -7,6 +7,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { useThemeStyles } from '../../../utils/themeUtils';
 
+const F = ({ label, styles, colors, ...props }) => (
+  <View style={{ marginBottom: SIZES.md }}>
+    <Text style={styles.label}>{label}</Text>
+    <TextInput style={styles.input} placeholderTextColor={colors.textMuted} {...props} />
+  </View>
+);
+
 export default function BranchForm() {
   const { colors } = useTheme();
   const styles = useThemeStyles(getStyles);
@@ -42,7 +49,8 @@ export default function BranchForm() {
       const payload = { ...form, manager: selectedManager || null };
       if (isEdit) await branchAPI.update(id, payload);
       else await branchAPI.create(payload);
-      router.back();
+      if (router.canGoBack()) router.back();
+      else router.replace('/manager/branches');
     } catch (err) {
       Alert.alert('Error', err.response?.data?.message || 'Failed to save branch.');
     } finally {
@@ -52,27 +60,20 @@ export default function BranchForm() {
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
 
-  const F = ({ label, ...props }) => (
-    <View style={{ marginBottom: SIZES.md }}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput style={styles.input} placeholderTextColor={colors.textMuted} {...props} />
-    </View>
-  );
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={22} color={colors.textPrimary} /></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/manager/branches')}><Ionicons name="arrow-back" size={22} color={colors.textPrimary} /></TouchableOpacity>
         <Text style={styles.headerTitle}>{isEdit ? 'Edit Branch' : 'New Branch'}</Text>
         <TouchableOpacity onPress={handleSave} disabled={saving}>
           {saving ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.saveBtn}>Save</Text>}
         </TouchableOpacity>
       </View>
       <ScrollView contentContainerStyle={{ padding: SIZES.md }}>
-        <F label="Branch Name *" value={form.name} onChangeText={(v) => setForm((f) => ({ ...f, name: v }))} placeholder="Cinema City Colombo" />
-        <F label="Address *" value={form.address} onChangeText={(v) => setForm((f) => ({ ...f, address: v }))} placeholder="123 Galle Road" />
-        <F label="City *" value={form.city} onChangeText={(v) => setForm((f) => ({ ...f, city: v }))} placeholder="Colombo" />
-        <F label="Phone" value={form.phone} onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))} placeholder="011 234 5678" keyboardType="phone-pad" />
+        <F styles={styles} colors={colors} label="Branch Name *" value={form.name} onChangeText={(v) => setForm((f) => ({ ...f, name: v }))} placeholder="Cinema City Colombo" />
+        <F styles={styles} colors={colors} label="Address *" value={form.address} onChangeText={(v) => setForm((f) => ({ ...f, address: v }))} placeholder="123 Galle Road" />
+        <F styles={styles} colors={colors} label="City *" value={form.city} onChangeText={(v) => setForm((f) => ({ ...f, city: v }))} placeholder="Colombo" />
+        <F styles={styles} colors={colors} label="Phone" value={form.phone} onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))} placeholder="011 234 5678" keyboardType="phone-pad" />
 
         <Text style={styles.label}>Assign Branch Manager (optional)</Text>
         <TouchableOpacity style={[styles.option, !selectedManager && styles.optionActive]} onPress={() => setSelectedManager('')}>

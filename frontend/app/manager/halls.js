@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { hallAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -25,12 +25,19 @@ export default function HallsScreen() {
 
   useEffect(() => { fetchHalls(); }, []);
 
-  const handleDelete = (id, name) => {
+  const handleDelete = async (id, name) => {
     if (!isMain) return Alert.alert('Permission Denied', 'Only the main manager can delete halls.');
-    Alert.alert('Delete Hall', `Delete "${name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => { await hallAPI.delete(id); setHalls((p) => p.filter((h) => h._id !== id)); } },
-    ]);
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Delete "${name}"?`)) {
+        try { await hallAPI.delete(id); setHalls((p) => p.filter((h) => h._id !== id)); }
+        catch (err) { window.alert('Delete failed.'); }
+      }
+    } else {
+      Alert.alert('Delete Hall', `Delete "${name}"?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: async () => { await hallAPI.delete(id); setHalls((p) => p.filter((h) => h._id !== id)); } },
+      ]);
+    }
   };
 
   const SCREEN_COLORS = { '2D': colors.textSecondary, '3D': colors.accentSecondary, '4DX': colors.warning, 'IMAX': colors.accent };
@@ -61,7 +68,7 @@ export default function HallsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={22} color={colors.textPrimary} /></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/manager/dashboard')}><Ionicons name="arrow-back" size={22} color={colors.textPrimary} /></TouchableOpacity>
         <Text style={styles.headerTitle}>Halls</Text>
         <TouchableOpacity onPress={() => router.push('/manager/hall-editor/new')}>
           <Ionicons name="add-circle" size={26} color={colors.primary} />

@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, ActivityIndicator, ScrollView,
 } from 'react-native';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { bookingAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { SIZES } from '../../constants/theme';
@@ -15,16 +15,20 @@ export default function EmployeeScan() {
   const { colors } = useTheme();
   const styles = useThemeStyles(getStyles);
   const { user, logout } = useAuth();
-  const [hasPermission, setHasPermission] = useState(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null); // { success, ticket, message }
 
   const requestCamera = async () => {
-    const { status } = await BarCodeScanner.requestPermissionsAsync();
-    setHasPermission(status === 'granted');
-    if (status === 'granted') setScanning(true);
+    if (permission?.granted) {
+      setScanning(true);
+      return;
+    }
+    const { granted } = await requestPermission();
+    if (granted) setScanning(true);
+    else Alert.alert('Error', 'Camera permission is required to scan tickets.');
   };
 
   const handleScan = async (code) => {
@@ -52,9 +56,11 @@ export default function EmployeeScan() {
   if (scanning) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000' }}>
-        <BarCodeScanner
+        <CameraView
           style={{ flex: 1 }}
-          onBarCodeScanned={({ data }) => handleScan(data)}
+          facing="back"
+          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+          onBarcodeScanned={({ data }) => handleScan(data)}
         />
         <TouchableOpacity style={styles.cancelScan} onPress={() => setScanning(false)}>
           <Ionicons name="close" size={28} color="#fff" />

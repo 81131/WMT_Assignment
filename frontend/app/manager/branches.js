@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { branchAPI } from '../../services/api';
 import { SIZES } from '../../constants/theme';
@@ -27,10 +27,18 @@ export default function BranchesScreen() {
 
   useEffect(() => { fetchBranches(); }, [showDeleted]);
 
-  const handleDelete = (id, name) => Alert.alert('Delete Branch', `Soft-delete "${name}"? It can be restored within 30 days.`, [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Delete', style: 'destructive', onPress: async () => { await branchAPI.delete(id); fetchBranches(); } },
-  ]);
+  const handleDelete = async (id, name) => {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Soft-delete "${name}"? It can be restored within 30 days.`)) {
+        await branchAPI.delete(id); fetchBranches();
+      }
+    } else {
+      Alert.alert('Delete Branch', `Soft-delete "${name}"? It can be restored within 30 days.`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: async () => { await branchAPI.delete(id); fetchBranches(); } },
+      ]);
+    }
+  };
 
   const handleRestore = async (id) => {
     try { await branchAPI.restore(id); fetchBranches(); }
@@ -74,7 +82,7 @@ export default function BranchesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={22} color={colors.textPrimary} /></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/manager/dashboard')}><Ionicons name="arrow-back" size={22} color={colors.textPrimary} /></TouchableOpacity>
         <Text style={styles.headerTitle}>Branches</Text>
         <TouchableOpacity onPress={() => router.push('/manager/branch-add')}>
           <Ionicons name="add-circle" size={26} color={colors.primary} />

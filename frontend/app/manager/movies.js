@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator, Image, RefreshControl,
+  Alert, ActivityIndicator, Image, RefreshControl, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { movieAPI } from '../../services/api';
@@ -29,21 +29,32 @@ export default function ManagerMovies() {
 
   useEffect(() => { fetchMovies(); }, []);
 
-  const handleDelete = (id, title) => {
-    Alert.alert('Deactivate Movie', `Deactivate "${title}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Deactivate', style: 'destructive',
-        onPress: async () => {
-          try {
-            await movieAPI.delete(id);
-            setMovies((prev) => prev.filter((m) => m._id !== id));
-          } catch (err) {
-            Alert.alert('Error', err.response?.data?.message || 'Failed to deactivate.');
-          }
+  const handleDelete = async (id, title) => {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Deactivate "${title}"?`)) {
+        try {
+          await movieAPI.delete(id);
+          setMovies((prev) => prev.filter((m) => m._id !== id));
+        } catch (err) {
+          window.alert(err.response?.data?.message || 'Failed to deactivate.');
+        }
+      }
+    } else {
+      Alert.alert('Deactivate Movie', `Deactivate "${title}"?`, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Deactivate', style: 'destructive',
+          onPress: async () => {
+            try {
+              await movieAPI.delete(id);
+              setMovies((prev) => prev.filter((m) => m._id !== id));
+            } catch (err) {
+              Alert.alert('Error', err.response?.data?.message || 'Failed to deactivate.');
+            }
+          },
         },
-      },
-    ]);
+      ]);
+    }
   };
 
   const renderItem = ({ item }) => (
@@ -58,7 +69,7 @@ export default function ManagerMovies() {
       <View style={styles.info}>
         <Text style={styles.movieTitle} numberOfLines={1}>{item.title}</Text>
         <Text style={styles.movieMeta}>{item.language} • {item.duration} min</Text>
-        <Text style={styles.branch}>{item.branch?.name}</Text>
+        <Text style={styles.branch} numberOfLines={1}>{item.branches?.map(b => b.name).join(', ')}</Text>
         <View style={[styles.activeBadge, { backgroundColor: item.isActive ? colors.success + '22' : colors.error + '22' }]}>
           <Text style={{ fontSize: 11, color: item.isActive ? colors.success : colors.error }}>{item.isActive ? 'Active' : 'Inactive'}</Text>
         </View>
@@ -77,7 +88,7 @@ export default function ManagerMovies() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.push('/manager/dashboard')}>
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Movies</Text>

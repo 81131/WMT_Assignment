@@ -28,7 +28,7 @@ export default function MovieDetail() {
     return d;
   });
 
-  useEffect(() => { fetchAll(); }, [id, selectedDate]);
+  useEffect(() => { if (id) fetchAll(); }, [id, selectedDate]);
 
   const fetchAll = async () => {
     try {

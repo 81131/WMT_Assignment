@@ -8,6 +8,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { useThemeStyles } from '../../../utils/themeUtils';
 
+const SelectList = ({ label, data, value, onChange, displayFn, styles, colors }) => (
+  <View style={{ marginBottom: SIZES.md }}>
+    <Text style={styles.label}>{label}</Text>
+    {data.map((item) => (
+      <TouchableOpacity key={item._id} style={[styles.option, value === item._id && styles.optionActive]} onPress={() => onChange(item._id)}>
+        <Text style={{ color: value === item._id ? '#fff' : colors.textPrimary, fontSize: 14 }}>{displayFn(item)}</Text>
+        {value === item._id && <Ionicons name="checkmark" size={16} color="#fff" />}
+      </TouchableOpacity>
+    ))}
+  </View>
+);
+
 export default function SlotForm() {
   const { colors } = useTheme();
   const styles = useThemeStyles(getStyles);
@@ -52,7 +64,8 @@ export default function SlotForm() {
       const payload = { ...form, pricing };
       if (isEdit) await slotAPI.update(id, { pricing });
       else await slotAPI.create(payload);
-      router.back();
+      if (router.canGoBack()) router.back();
+      else router.replace('/manager/slots');
     } catch (err) {
       Alert.alert('Error', err.response?.data?.message || 'Failed to save slot.');
     } finally {
@@ -64,22 +77,10 @@ export default function SlotForm() {
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
 
-  const SelectList = ({ label, data, value, onChange, displayFn }) => (
-    <View style={{ marginBottom: SIZES.md }}>
-      <Text style={styles.label}>{label}</Text>
-      {data.map((item) => (
-        <TouchableOpacity key={item._id} style={[styles.option, value === item._id && styles.optionActive]} onPress={() => onChange(item._id)}>
-          <Text style={{ color: value === item._id ? '#fff' : colors.textPrimary, fontSize: 14 }}>{displayFn(item)}</Text>
-          {value === item._id && <Ionicons name="checkmark" size={16} color="#fff" />}
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={22} color={colors.textPrimary} /></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/manager/slots')}><Ionicons name="arrow-back" size={22} color={colors.textPrimary} /></TouchableOpacity>
         <Text style={styles.headerTitle}>{isEdit ? 'Edit Time Slot' : 'New Time Slot'}</Text>
         <TouchableOpacity onPress={handleSave} disabled={saving}>
           {saving ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.saveBtn}>Save</Text>}
@@ -88,9 +89,9 @@ export default function SlotForm() {
       <ScrollView contentContainerStyle={{ padding: SIZES.md }}>
         {!isEdit && (
           <>
-            {isMain && <SelectList label="Branch *" data={branches} value={form.branch} onChange={(v) => setForm((f) => ({ ...f, branch: v, hall: '' }))} displayFn={(b) => `${b.name} — ${b.city}`} />}
-            <SelectList label="Movie *" data={movies} value={form.movie} onChange={(v) => setForm((f) => ({ ...f, movie: v }))} displayFn={(m) => `${m.title} (${m.duration} min)`} />
-            <SelectList label="Hall *" data={filteredHalls} value={form.hall} onChange={(v) => setForm((f) => ({ ...f, hall: v }))} displayFn={(h) => `${h.name} — ${h.screenType}`} />
+            {isMain && <SelectList styles={styles} colors={colors} label="Branch *" data={branches} value={form.branch} onChange={(v) => setForm((f) => ({ ...f, branch: v, hall: '' }))} displayFn={(b) => `${b.name} — ${b.city}`} />}
+            <SelectList styles={styles} colors={colors} label="Movie *" data={movies} value={form.movie} onChange={(v) => setForm((f) => ({ ...f, movie: v }))} displayFn={(m) => `${m.title} (${m.duration} min)`} />
+            <SelectList styles={styles} colors={colors} label="Hall *" data={filteredHalls} value={form.hall} onChange={(v) => setForm((f) => ({ ...f, hall: v }))} displayFn={(h) => `${h.name} — ${h.screenType}`} />
             <Text style={styles.label}>Start Date & Time *</Text>
             <TextInput style={[styles.input, { marginBottom: SIZES.md }]} value={form.startTime} onChangeText={(v) => setForm((f) => ({ ...f, startTime: v }))} placeholder="YYYY-MM-DDTHH:MM (e.g. 2026-06-15T18:30)" placeholderTextColor={colors.textMuted} />
             <Text style={styles.hint}>End time is auto-calculated from movie duration + 20 min buffer.</Text>

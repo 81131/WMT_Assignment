@@ -15,6 +15,13 @@ import { useThemeStyles } from '../../../utils/themeUtils';
 const GENRES = ['Action', 'Drama', 'Comedy', 'Horror', 'Sci-Fi', 'Romance', 'Thriller', 'Animation', 'Documentary'];
 const RATINGS = ['G', 'PG', 'PG-13', 'R', 'NC-17'];
 
+const Field = ({ label, styles, colors, ...props }) => (
+  <View style={{ marginBottom: SIZES.md }}>
+    <Text style={styles.label}>{label}</Text>
+    <TextInput style={styles.input} placeholderTextColor={colors.textMuted} {...props} />
+  </View>
+);
+
 export default function MovieForm() {
   const { colors } = useTheme();
   const styles = useThemeStyles(getStyles);
@@ -24,7 +31,8 @@ export default function MovieForm() {
   const { user } = useAuth();
   const isMain = user?.role === ROLES.MAIN_MANAGER;
 
-  const [form, setForm] = useState({ title: '', description: '', duration: '', language: '', rating: 'PG', genre: [], cast: '', trailerUrl: '', branches: [], isActive: true });
+  const [form, setForm] = useState({ title: '', description: '', duration: '', language: '', rating: 'PG', genre: [], cast: [], trailerUrl: '', branches: [], isActive: true });
+  const [castInput, setCastInput] = useState('');
   const [posterUri, setPosterUri] = useState(null);
   const [existingPoster, setExistingPoster] = useState(null);
   const [branches, setBranches] = useState([]);
@@ -45,7 +53,7 @@ export default function MovieForm() {
           setForm({ 
             title: m.title, description: m.description, duration: String(m.duration), 
             language: m.language, rating: m.rating, genre: m.genre || [], 
-            cast: (m.cast || []).join(', '), trailerUrl: m.trailerUrl || '', 
+            cast: m.cast || [], trailerUrl: m.trailerUrl || '', 
             branches: m.branches ? m.branches.map(b => b._id || b) : [], 
             isActive: m.isActive 
           });
@@ -90,7 +98,7 @@ export default function MovieForm() {
       
     setSaving(true);
     try {
-      const payload = { ...form, duration: parseInt(form.duration), cast: form.cast.split(',').map((s) => s.trim()).filter(Boolean) };
+      const payload = { ...form, duration: parseInt(form.duration) };
       
       let movieId = id;
       if (isEdit) {
@@ -119,7 +127,11 @@ export default function MovieForm() {
         await movieAPI.uploadPoster(movieId, formData);
       }
 
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/manager/movies');
+      }
     } catch (err) {
       Alert.alert('Error', err.response?.data?.message || 'Failed to save movie.');
     } finally {
@@ -128,13 +140,6 @@ export default function MovieForm() {
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
-
-  const F = ({ label, ...props }) => (
-    <View style={{ marginBottom: SIZES.md }}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput style={styles.input} placeholderTextColor={colors.textMuted} {...props} />
-    </View>
-  );
 
   return (
     <View style={styles.container}>
@@ -151,7 +156,7 @@ export default function MovieForm() {
         <Text style={styles.label}>Movie Poster</Text>
         <TouchableOpacity style={styles.posterUpload} onPress={pickImage}>
           {(posterUri || existingPoster) ? (
-            <Image source={{ uri: posterUri || existingPoster }} style={styles.posterImg} />
+            <Image source={{ uri: posterUri || existingPoster }} style={styles.posterImg} resizeMode="cover" />
           ) : (
             <View style={styles.posterPlaceholder}>
               <Ionicons name="cloud-upload-outline" size={32} color={colors.textMuted} />
@@ -160,15 +165,51 @@ export default function MovieForm() {
           )}
         </TouchableOpacity>
 
-        <F label="Title *" value={form.title} onChangeText={(v) => setForm((f) => ({ ...f, title: v }))} placeholder="Movie title" />
+        <Field styles={styles} colors={colors} label="Title *" value={form.title} onChangeText={(v) => setForm((f) => ({ ...f, title: v }))} placeholder="Movie title" />
         <View style={{ marginBottom: SIZES.md }}>
           <Text style={styles.label}>Description *</Text>
           <TextInput style={[styles.input, { height: 90, textAlignVertical: 'top' }]} multiline placeholder="Movie description" placeholderTextColor={colors.textMuted} value={form.description} onChangeText={(v) => setForm((f) => ({ ...f, description: v }))} />
         </View>
-        <F label="Duration (minutes) *" value={form.duration} onChangeText={(v) => setForm((f) => ({ ...f, duration: v }))} keyboardType="numeric" placeholder="120" />
-        <F label="Language *" value={form.language} onChangeText={(v) => setForm((f) => ({ ...f, language: v }))} placeholder="English" />
-        <F label="Cast (comma-separated)" value={form.cast} onChangeText={(v) => setForm((f) => ({ ...f, cast: v }))} placeholder="Actor 1, Actor 2" />
-        <F label="Trailer URL" value={form.trailerUrl} onChangeText={(v) => setForm((f) => ({ ...f, trailerUrl: v }))} placeholder="https://youtube.com/..." keyboardType="url" />
+        <Field styles={styles} colors={colors} label="Duration (minutes) *" value={form.duration} onChangeText={(v) => setForm((f) => ({ ...f, duration: v }))} keyboardType="numeric" placeholder="120" />
+        <Field styles={styles} colors={colors} label="Language *" value={form.language} onChangeText={(v) => setForm((f) => ({ ...f, language: v }))} placeholder="English" />
+        {/* Cast Members (Tag Input) */}
+        <Text style={styles.label}>Cast Members</Text>
+        <View style={[styles.input, { height: 'auto', minHeight: 48, paddingVertical: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }]}>
+          {form.cast.map((actor, idx) => (
+            <View key={idx} style={styles.castChip}>
+              <Text style={styles.castChipText}>{actor}</Text>
+              <TouchableOpacity onPress={() => setForm(f => ({ ...f, cast: f.cast.filter((_, i) => i !== idx) }))}>
+                <Ionicons name="close-circle" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          ))}
+          <TextInput
+            style={{ flex: 1, minWidth: 120, color: colors.textPrimary, fontSize: 14, padding: 0 }}
+            placeholder="Type name and press comma..."
+            placeholderTextColor={colors.textMuted}
+            value={castInput}
+            onChangeText={(text) => {
+              if (text.endsWith(',')) {
+                const newActor = text.slice(0, -1).trim();
+                if (newActor && !form.cast.includes(newActor)) {
+                  setForm(f => ({ ...f, cast: [...f.cast, newActor] }));
+                }
+                setCastInput('');
+              } else {
+                setCastInput(text);
+              }
+            }}
+            onSubmitEditing={() => {
+              const newActor = castInput.trim();
+              if (newActor && !form.cast.includes(newActor)) {
+                setForm(f => ({ ...f, cast: [...f.cast, newActor] }));
+              }
+              setCastInput('');
+            }}
+          />
+        </View>
+
+        <Field styles={styles} colors={colors} label="Trailer URL" value={form.trailerUrl} onChangeText={(v) => setForm((f) => ({ ...f, trailerUrl: v }))} placeholder="https://youtube.com/..." keyboardType="url" />
 
         {/* Rating */}
         <Text style={styles.label}>Age Rating</Text>
@@ -233,6 +274,8 @@ const getStyles = (colors) => StyleSheet.create({
   branchOptActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SIZES.md },
   posterUpload: { alignSelf: 'center', width: 140, height: 210, backgroundColor: colors.surface, borderRadius: SIZES.radius, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: SIZES.md, justifyContent: 'center', alignItems: 'center' },
-  posterImg: { width: '100%', height: '100%', resizeMode: 'cover' },
+  posterImg: { width: '100%', height: '100%' },
   posterPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  castChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceElevated, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4, gap: 4, borderWidth: 1, borderColor: colors.border },
+  castChipText: { color: colors.textPrimary, fontSize: 13 },
 });
