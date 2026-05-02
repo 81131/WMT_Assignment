@@ -4,7 +4,6 @@ const SeatLock = require('../models/SeatLock');
 const TimeSlot = require('../models/TimeSlot');
 const { nanoid } = require('nanoid');
 const { generateAndUploadQR } = require('../utils/qrGenerator');
-const { generateAndUploadQR } = require('../utils/qrGenerator');
 exports.lockSeats = async (req, res) => {
   const { timeSlotId, seatIds } = req.body;
   if (!timeSlotId || !Array.isArray(seatIds) || seatIds.length === 0) {
