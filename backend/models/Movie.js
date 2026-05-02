@@ -8,7 +8,10 @@ const movieSchema = new mongoose.Schema(
     duration: { type: Number, required: true }, // minutes
     language: { type: String, required: true },
     rating: { type: String, enum: ['G', 'PG', 'PG-13', 'R', 'NC-17'], default: 'PG' },
-    cast: [{ type: String }],
+    cast: [{ 
+      name: { type: String, required: true },
+      photoUrl: { type: String, default: null }
+    }],
     posterUrl: { type: String, default: null },
     trailerUrl: { type: String, default: null },
     branches: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true }],

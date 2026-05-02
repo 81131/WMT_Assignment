@@ -23,6 +23,19 @@ exports.getMovies = async (req, res) => {
   res.json({ success: true, count: movies.length, movies });
 };
 
+// GET /api/movies/actors/distinct
+exports.getDistinctActors = async (req, res) => {
+  // Extract distinct actor names across all movies
+  const actors = await Movie.distinct('cast.name');
+  res.json({ success: true, actors: actors.filter(Boolean).sort() });
+};
+
+// POST /api/movies/upload-image
+exports.uploadImage = async (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, message: 'No image uploaded.' });
+  res.json({ success: true, imageUrl: req.file.path });
+};
+
 // GET /api/movies/:id
 exports.getMovieById = async (req, res) => {
   const movie = await Movie.findById(req.params.id).populate('branches', 'name city address');

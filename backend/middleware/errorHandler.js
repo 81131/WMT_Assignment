@@ -1,6 +1,6 @@
 // Global error handler — must have 4 args for Express to treat it as error middleware
 const errorHandler = (err, req, res, next) => {
-  console.error(`[ERROR] ${req.method} ${req.path} →`, err.message);
+  console.error(`[ERROR] ${req.method} ${req.path} →`, err.message || err);
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {

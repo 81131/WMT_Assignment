@@ -34,7 +34,7 @@ exports.getTimeSlotById = async (req, res) => {
 
 // POST /api/timeslots
 exports.createTimeSlot = async (req, res) => {
-  const { movie: movieId, hall, branch, startTime, pricing } = req.body;
+  const { movie: movieId, hall, branch, startTime, pricing, interventionTime = 0 } = req.body;
   if (req.user.role === 'branch_manager' &&
     req.user.assignedBranch?.toString() !== branch?.toString()) {
     return res.status(403).json({ success: false, message: 'Access denied to this branch.' });
@@ -42,7 +42,7 @@ exports.createTimeSlot = async (req, res) => {
   const movie = await Movie.findById(movieId);
   if (!movie) return res.status(404).json({ success: false, message: 'Movie not found.' });
   const start = new Date(startTime);
-  const endTime = new Date(start.getTime() + (movie.duration + 20) * 60000);
+  const endTime = new Date(start.getTime() + (movie.duration + 20 + Number(interventionTime)) * 60000);
   const conflict = await TimeSlot.findOne({
     hall, isActive: true,
     $or: [{ startTime: { $lt: endTime }, endTime: { $gt: start } }],
@@ -53,7 +53,7 @@ exports.createTimeSlot = async (req, res) => {
       message: `Hall already booked from ${conflict.startTime.toISOString()} to ${conflict.endTime.toISOString()}.`,
     });
   }
-  const slot = await TimeSlot.create({ movie: movieId, hall, branch, startTime: start, endTime, pricing });
+  const slot = await TimeSlot.create({ movie: movieId, hall, branch, startTime: start, endTime, interventionTime, pricing });
   res.status(201).json({ success: true, timeSlot: slot });
 };
 
@@ -65,9 +65,18 @@ exports.updateTimeSlot = async (req, res) => {
     req.user.assignedBranch?.toString() !== slot.branch.toString()) {
     return res.status(403).json({ success: false, message: 'Access denied.' });
   }
-  const { pricing, isActive } = req.body;
+  const { pricing, isActive, interventionTime } = req.body;
   if (pricing) slot.pricing = pricing;
   if (typeof isActive !== 'undefined') slot.isActive = isActive;
+  
+  // Re-calculate endTime if interventionTime changes
+  if (typeof interventionTime !== 'undefined' && interventionTime !== slot.interventionTime) {
+    slot.interventionTime = Number(interventionTime);
+    const start = new Date(slot.startTime);
+    const movie = await Movie.findById(slot.movie);
+    slot.endTime = new Date(start.getTime() + (movie.duration + 20 + slot.interventionTime) * 60000);
+  }
+  
   await slot.save();
   res.json({ success: true, timeSlot: slot });
 };

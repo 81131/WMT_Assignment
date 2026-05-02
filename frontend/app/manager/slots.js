@@ -6,6 +6,7 @@ import { SIZES } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useThemeStyles } from '../../utils/themeUtils';
+import ConfirmModal from '../../components/ConfirmModal';
 
 export default function SlotsScreen() {
   const { colors } = useTheme();
@@ -14,6 +15,7 @@ export default function SlotsScreen() {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ visible: false, id: null });
 
   const fetchSlots = async () => {
     try {
@@ -26,20 +28,18 @@ export default function SlotsScreen() {
 
   useEffect(() => { fetchSlots(); }, []);
 
-  const handleDelete = async (id) => {
-    if (Platform.OS === 'web') {
-      if (window.confirm('Delete this time slot?')) {
-        try { await slotAPI.delete(id); setSlots((p) => p.filter((s) => s._id !== id)); }
-        catch (err) { window.alert(err.response?.data?.message || 'Delete failed.'); }
-      }
-    } else {
-      Alert.alert('Delete Slot', 'Delete this time slot?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: async () => {
-          try { await slotAPI.delete(id); setSlots((p) => p.filter((s) => s._id !== id)); }
-          catch (err) { Alert.alert('Error', err.response?.data?.message || 'Delete failed.'); }
-        }},
-      ]);
+  const requestDelete = (id) => {
+    setConfirmDelete({ visible: true, id });
+  };
+
+  const executeDelete = async () => {
+    const { id } = confirmDelete;
+    setConfirmDelete({ visible: false, id: null });
+    try {
+      await slotAPI.delete(id);
+      setSlots((p) => p.filter((s) => s._id !== id));
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.message || 'Delete failed.');
     }
   };
 
@@ -59,7 +59,7 @@ export default function SlotsScreen() {
         <TouchableOpacity onPress={() => router.push(`/manager/slot-edit/${item._id}`)}>
           <Ionicons name="pencil-outline" size={20} color={colors.accentSecondary} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item._id)} style={{ marginTop: 12 }}>
+        <TouchableOpacity onPress={() => requestDelete(item._id)} style={{ marginTop: 12 }}>
           <Ionicons name="trash-outline" size={20} color={colors.error} />
         </TouchableOpacity>
       </View>
@@ -85,6 +85,14 @@ export default function SlotsScreen() {
           ListEmptyComponent={<Text style={styles.empty}>No time slots. Tap + to add one.</Text>}
         />
       )}
+      <ConfirmModal
+        visible={confirmDelete.visible}
+        title="Delete Slot"
+        message="Are you sure you want to delete this time slot?"
+        confirmText="Delete"
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete({ visible: false, id: null })}
+      />
     </View>
   );
 }

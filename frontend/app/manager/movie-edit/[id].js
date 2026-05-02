@@ -33,11 +33,14 @@ export default function MovieForm() {
 
   const [form, setForm] = useState({ title: '', description: '', duration: '', language: '', rating: 'PG', genre: [], cast: [], trailerUrl: '', branches: [], isActive: true });
   const [castInput, setCastInput] = useState('');
+  const [distinctActors, setDistinctActors] = useState([]);
+  const [filteredActors, setFilteredActors] = useState([]);
   const [posterUri, setPosterUri] = useState(null);
   const [existingPoster, setExistingPoster] = useState(null);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [createdMovieId, setCreatedMovieId] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -47,13 +50,21 @@ export default function MovieForm() {
           const { data } = await branchAPI.getAll();
           setBranches(data.branches);
         }
+        }
+        
+        try {
+          const { data: actorData } = await movieAPI.getDistinctActors();
+          setDistinctActors(actorData.actors || []);
+        } catch (e) { console.log('Could not fetch distinct actors', e); }
+
         if (isEdit) {
           const { data } = await movieAPI.getById(id);
           const m = data.movie;
           setForm({ 
             title: m.title, description: m.description, duration: String(m.duration), 
             language: m.language, rating: m.rating, genre: m.genre || [], 
-            cast: m.cast || [], trailerUrl: m.trailerUrl || '', 
+            cast: m.cast?.map(c => typeof c === 'string' ? { name: c, photoUrl: null } : c) || [], 
+            trailerUrl: m.trailerUrl || '', 
             branches: m.branches ? m.branches.map(b => b._id || b) : [], 
             isActive: m.isActive 
           });
@@ -92,6 +103,44 @@ export default function MovieForm() {
     }
   };
 
+  const pickActorImage = async (idx) => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) return Alert.alert("Permission Refused", "You need to allow access to upload actor photos.");
+    
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setLoading(true);
+      try {
+        const uri = result.assets[0].uri;
+        const formData = new FormData();
+        if (Platform.OS === 'web') {
+           const res = await fetch(uri);
+           const blob = await res.blob();
+           formData.append('image', blob, 'actor.jpg');
+        } else {
+           const filename = uri.split('/').pop() || 'actor.jpg';
+           const type = `image/${filename.split('.').pop() || 'jpeg'}`;
+           formData.append('image', { uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri, name: filename, type });
+        }
+        
+        const { data } = await movieAPI.uploadActorImage(formData);
+        
+        setForm(f => {
+          const newCast = [...f.cast];
+          newCast[idx].photoUrl = data.imageUrl;
+          return { ...f, cast: newCast };
+        });
+      } catch (err) {
+        Alert.alert('Upload Failed', 'Could not upload actor image.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   const handleSave = async () => {
     if (!form.title || !form.duration || !form.language || form.branches.length === 0) 
       return Alert.alert('Error', 'Title, duration, language, and at least one branch are required.');
@@ -100,12 +149,13 @@ export default function MovieForm() {
     try {
       const payload = { ...form, duration: parseInt(form.duration) };
       
-      let movieId = id;
-      if (isEdit) {
-        await movieAPI.update(id, payload);
+      let movieId = isEdit ? id : createdMovieId;
+      if (movieId) {
+        await movieAPI.update(movieId, payload);
       } else {
         const { data } = await movieAPI.create(payload);
         movieId = data.movie._id;
+        setCreatedMovieId(movieId);
       }
 
       if (posterUri) {
@@ -172,41 +222,69 @@ export default function MovieForm() {
         </View>
         <Field styles={styles} colors={colors} label="Duration (minutes) *" value={form.duration} onChangeText={(v) => setForm((f) => ({ ...f, duration: v }))} keyboardType="numeric" placeholder="120" />
         <Field styles={styles} colors={colors} label="Language *" value={form.language} onChangeText={(v) => setForm((f) => ({ ...f, language: v }))} placeholder="English" />
-        {/* Cast Members (Tag Input) */}
+        {/* Cast Members (Tag Input & Photo Upload) */}
         <Text style={styles.label}>Cast Members</Text>
-        <View style={[styles.input, { height: 'auto', minHeight: 48, paddingVertical: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }]}>
+        <View style={{ marginBottom: SIZES.md, gap: 10 }}>
           {form.cast.map((actor, idx) => (
-            <View key={idx} style={styles.castChip}>
-              <Text style={styles.castChipText}>{actor}</Text>
+            <View key={idx} style={styles.actorCard}>
+              <TouchableOpacity onPress={() => pickActorImage(idx)} style={styles.actorAvatarBtn}>
+                {actor.photoUrl ? (
+                  <Image source={{ uri: actor.photoUrl }} style={styles.actorAvatar} />
+                ) : (
+                  <View style={styles.actorAvatarPlaceholder}>
+                    <Ionicons name="camera" size={16} color={colors.textMuted} />
+                  </View>
+                )}
+              </TouchableOpacity>
+              <Text style={styles.actorName}>{actor.name}</Text>
               <TouchableOpacity onPress={() => setForm(f => ({ ...f, cast: f.cast.filter((_, i) => i !== idx) }))}>
-                <Ionicons name="close-circle" size={16} color={colors.textSecondary} />
+                <Ionicons name="close-circle" size={24} color={colors.error} />
               </TouchableOpacity>
             </View>
           ))}
-          <TextInput
-            style={{ flex: 1, minWidth: 120, color: colors.textPrimary, fontSize: 14, padding: 0 }}
-            placeholder="Type name and press comma..."
-            placeholderTextColor={colors.textMuted}
-            value={castInput}
-            onChangeText={(text) => {
-              if (text.endsWith(',')) {
-                const newActor = text.slice(0, -1).trim();
-                if (newActor && !form.cast.includes(newActor)) {
-                  setForm(f => ({ ...f, cast: [...f.cast, newActor] }));
+          
+          <View style={{ zIndex: 10 }}>
+            <TextInput
+              style={styles.input}
+              placeholder="Type actor name..."
+              placeholderTextColor={colors.textMuted}
+              value={castInput}
+              onChangeText={(text) => {
+                setCastInput(text);
+                if (text.length > 0) {
+                  setFilteredActors(distinctActors.filter(a => a.toLowerCase().includes(text.toLowerCase()) && !form.cast.find(c => c.name === a)));
+                } else {
+                  setFilteredActors([]);
+                }
+              }}
+              onSubmitEditing={() => {
+                const newActor = castInput.trim();
+                if (newActor && !form.cast.find(c => c.name === newActor)) {
+                  setForm(f => ({ ...f, cast: [...f.cast, { name: newActor, photoUrl: null }] }));
                 }
                 setCastInput('');
-              } else {
-                setCastInput(text);
-              }
-            }}
-            onSubmitEditing={() => {
-              const newActor = castInput.trim();
-              if (newActor && !form.cast.includes(newActor)) {
-                setForm(f => ({ ...f, cast: [...f.cast, newActor] }));
-              }
-              setCastInput('');
-            }}
-          />
+                setFilteredActors([]);
+              }}
+            />
+            {filteredActors.length > 0 && (
+              <View style={[styles.suggestionBox, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
+                {filteredActors.map(actor => (
+                  <TouchableOpacity 
+                    key={actor} 
+                    style={[styles.suggestionItem, { borderBottomColor: colors.border }]}
+                    onPress={() => {
+                      setForm(f => ({ ...f, cast: [...f.cast, { name: actor, photoUrl: null }] }));
+                      setCastInput('');
+                      setFilteredActors([]);
+                    }}
+                  >
+                    <Text style={{ color: colors.textPrimary }}>{actor}</Text>
+                    <Ionicons name="add" size={16} color={colors.primary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
         </View>
 
         <Field styles={styles} colors={colors} label="Trailer URL" value={form.trailerUrl} onChangeText={(v) => setForm((f) => ({ ...f, trailerUrl: v }))} placeholder="https://youtube.com/..." keyboardType="url" />
@@ -276,6 +354,11 @@ const getStyles = (colors) => StyleSheet.create({
   posterUpload: { alignSelf: 'center', width: 140, height: 210, backgroundColor: colors.surface, borderRadius: SIZES.radius, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: SIZES.md, justifyContent: 'center', alignItems: 'center' },
   posterImg: { width: '100%', height: '100%' },
   posterPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  castChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceElevated, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4, gap: 4, borderWidth: 1, borderColor: colors.border },
-  castChipText: { color: colors.textPrimary, fontSize: 13 },
+  actorCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: SIZES.radius, padding: 8, borderWidth: 1, borderColor: colors.border },
+  actorAvatarBtn: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden', backgroundColor: colors.surfaceElevated, marginRight: 12, borderWidth: 1, borderColor: colors.border },
+  actorAvatar: { width: '100%', height: '100%' },
+  actorAvatarPlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  actorName: { flex: 1, color: colors.textPrimary, fontSize: 15, fontWeight: '500' },
+  suggestionBox: { position: 'absolute', top: 52, left: 0, right: 0, borderWidth: 1, borderRadius: SIZES.radius, zIndex: 999, maxHeight: 150 },
+  suggestionItem: { flexDirection: 'row', justifyContent: 'space-between', padding: 12, borderBottomWidth: 1 },
 });

@@ -6,6 +6,7 @@ import { SIZES } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useThemeStyles } from '../../utils/themeUtils';
+import ConfirmModal from '../../components/ConfirmModal';
 
 export default function BranchesScreen() {
   const { colors } = useTheme();
@@ -15,6 +16,7 @@ export default function BranchesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ visible: false, id: null, name: '' });
 
   const fetchBranches = async () => {
     try {
@@ -27,16 +29,18 @@ export default function BranchesScreen() {
 
   useEffect(() => { fetchBranches(); }, [showDeleted]);
 
-  const handleDelete = async (id, name) => {
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Soft-delete "${name}"? It can be restored within 30 days.`)) {
-        await branchAPI.delete(id); fetchBranches();
-      }
-    } else {
-      Alert.alert('Delete Branch', `Soft-delete "${name}"? It can be restored within 30 days.`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: async () => { await branchAPI.delete(id); fetchBranches(); } },
-      ]);
+  const requestDelete = (id, name) => {
+    setConfirmDelete({ visible: true, id, name });
+  };
+
+  const executeDelete = async () => {
+    const { id } = confirmDelete;
+    setConfirmDelete({ visible: false, id: null, name: '' });
+    try {
+      await branchAPI.delete(id);
+      fetchBranches();
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.message || 'Delete failed.');
     }
   };
 
@@ -70,7 +74,7 @@ export default function BranchesScreen() {
             <TouchableOpacity onPress={() => router.push(`/manager/branch-edit/${item._id}`)}>
               <Ionicons name="pencil-outline" size={20} color={colors.accentSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleDelete(item._id, item.name)} style={{ marginTop: 12 }}>
+            <TouchableOpacity onPress={() => requestDelete(item._id, item.name)} style={{ marginTop: 12 }}>
               <Ionicons name="trash-outline" size={20} color={colors.error} />
             </TouchableOpacity>
           </>
@@ -102,6 +106,14 @@ export default function BranchesScreen() {
           ListEmptyComponent={<Text style={styles.empty}>No branches. Tap + to add one.</Text>}
         />
       )}
+      <ConfirmModal
+        visible={confirmDelete.visible}
+        title="Delete Branch"
+        message={`Are you sure you want to soft-delete "${confirmDelete.name}"? It can be restored within 30 days.`}
+        confirmText="Delete"
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete({ visible: false, id: null, name: '' })}
+      />
     </View>
   );
 }

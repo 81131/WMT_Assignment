@@ -7,6 +7,7 @@ import { SIZES, ROLES } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useThemeStyles } from '../../utils/themeUtils';
+import ConfirmModal from '../../components/ConfirmModal';
 
 export default function HallsScreen() {
   const { colors } = useTheme();
@@ -17,6 +18,7 @@ export default function HallsScreen() {
   const [halls, setHalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ visible: false, id: null, name: '' });
 
   const fetchHalls = async () => {
     try { const { data } = await hallAPI.getAll(); setHalls(data.halls); } catch {}
@@ -25,18 +27,19 @@ export default function HallsScreen() {
 
   useEffect(() => { fetchHalls(); }, []);
 
-  const handleDelete = async (id, name) => {
+  const requestDelete = (id, name) => {
     if (!isMain) return Alert.alert('Permission Denied', 'Only the main manager can delete halls.');
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Delete "${name}"?`)) {
-        try { await hallAPI.delete(id); setHalls((p) => p.filter((h) => h._id !== id)); }
-        catch (err) { window.alert('Delete failed.'); }
-      }
-    } else {
-      Alert.alert('Delete Hall', `Delete "${name}"?`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: async () => { await hallAPI.delete(id); setHalls((p) => p.filter((h) => h._id !== id)); } },
-      ]);
+    setConfirmDelete({ visible: true, id, name });
+  };
+
+  const executeDelete = async () => {
+    const { id } = confirmDelete;
+    setConfirmDelete({ visible: false, id: null, name: '' });
+    try {
+      await hallAPI.delete(id);
+      setHalls((p) => p.filter((h) => h._id !== id));
+    } catch (err) {
+      Alert.alert('Error', 'Delete failed.');
     }
   };
 
@@ -57,7 +60,7 @@ export default function HallsScreen() {
           <Ionicons name="grid-outline" size={20} color={colors.accentSecondary} />
         </TouchableOpacity>
         {isMain && (
-          <TouchableOpacity onPress={() => handleDelete(item._id, item.name)} style={{ marginTop: 12 }}>
+          <TouchableOpacity onPress={() => requestDelete(item._id, item.name)} style={{ marginTop: 12 }}>
             <Ionicons name="trash-outline" size={20} color={colors.error} />
           </TouchableOpacity>
         )}
@@ -84,6 +87,14 @@ export default function HallsScreen() {
           ListEmptyComponent={<Text style={styles.empty}>No halls yet. Tap + to create one.</Text>}
         />
       )}
+      <ConfirmModal
+        visible={confirmDelete.visible}
+        title="Delete Hall"
+        message={`Are you sure you want to delete "${confirmDelete.name}"?`}
+        confirmText="Delete"
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete({ visible: false, id: null, name: '' })}
+      />
     </View>
   );
 }

@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
 import { useThemeStyles } from '../../utils/themeUtils';
+import ConfirmModal from '../../components/ConfirmModal';
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
@@ -18,6 +19,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [name, setName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   const handleUpdate = async () => {
     if (!name.trim()) return Alert.alert('Error', 'Name cannot be empty.');
@@ -33,10 +35,7 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: logout },
-    ]);
+    setConfirmLogout(true);
   };
 
   const InfoRow = ({ icon, label, value }) => (
@@ -105,7 +104,20 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
+
+      <ConfirmModal
+        visible={confirmLogout}
+        title="Logout"
+        message="Are you sure you want to log out?"
+        confirmText="Logout"
+        onConfirm={() => {
+          setConfirmLogout(false);
+          logout();
+        }}
+        onCancel={() => setConfirmLogout(false)}
+      />
     </View>
   );
 }

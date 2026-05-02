@@ -12,9 +12,17 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage });
 
+const actorStorage = new CloudinaryStorage({
+  cloudinary,
+  params: { folder: 'cinema/actors', allowedFormats: ['jpg', 'jpeg', 'png', 'webp'] },
+});
+const uploadActor = multer({ storage: actorStorage });
+
 const mgr = ['main_manager', 'branch_manager'];
 
 router.get('/', protect, ctrl.getMovies);
+router.get('/actors/distinct', protect, ctrl.getDistinctActors);
+router.post('/upload-image', protect, requireRole(...mgr), uploadActor.single('image'), ctrl.uploadImage);
 router.get('/:id', protect, ctrl.getMovieById);
 router.post('/', protect, requireRole(...mgr), ctrl.createMovie);
 router.put('/:id', protect, requireRole(...mgr), ctrl.updateMovie);

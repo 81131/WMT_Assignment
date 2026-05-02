@@ -6,7 +6,8 @@ const timeSlotSchema = new mongoose.Schema(
     hall: { type: mongoose.Schema.Types.ObjectId, ref: 'Hall', required: true },
     branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
     startTime: { type: Date, required: true },
-    endTime: { type: Date, required: true }, // auto-computed: startTime + duration + 20min buffer
+    endTime: { type: Date, required: true }, // auto-computed
+    interventionTime: { type: Number, default: 0 },
     pricing: {
       regular: { type: Number, required: true, min: 0 },
       vip: { type: Number, required: true, min: 0 },

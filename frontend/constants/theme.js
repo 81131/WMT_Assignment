@@ -1,29 +1,29 @@
 export const darkColors = {
-  // Primary palette
-  primary: '#E63946',
-  primaryDark: '#C1121F',
-  primaryLight: '#FF6B6B',
+  // Primary palette (PVR Yellow)
+  primary: '#FFC107',
+  primaryDark: '#B38705',
+  primaryLight: '#FFD54F',
 
-  // Backgrounds
-  background: '#0D0D1A',
-  surface: '#161627',
-  surfaceElevated: '#1E1E35',
-  card: '#1A1A2E',
+  // Backgrounds (Dark/Black)
+  background: '#121212',
+  surface: '#1E1E1E',
+  surfaceElevated: '#2C2C2C',
+  card: '#1A1A1A',
 
   // Accent
-  accent: '#FFD60A',
-  accentSecondary: '#00B4D8',
+  accent: '#FFC107',
+  accentSecondary: '#F39C12',
 
   // Seat types
-  seatRegular: '#4A4A6A',
-  seatVip: '#FFD700',
-  seatLoveseat: '#FF69B4',
-  seatProducer: '#9B59B6',
-  seatLobby: '#00BCD4',
-  seatBooked: '#2D2D2D',
-  seatLocked: '#E07B00',
+  seatRegular: '#333333',
+  seatVip: '#FFC107',
+  seatLoveseat: '#E91E63',
+  seatProducer: '#9C27B0',
+  seatLobby: '#03A9F4',
+  seatBooked: '#1A1A1A',
+  seatLocked: '#E67E22',
   seatMyHold: '#2ECC71',
-  seatInactive: '#1A1A1A',
+  seatInactive: '#111111',
 
   // Text
   textPrimary: '#FFFFFF',
@@ -43,20 +43,20 @@ export const darkColors = {
 
 export const lightColors = {
   ...darkColors, // keep same brand colors
-  background: '#F5F5F7',
+  background: '#F8F9FA',
   surface: '#FFFFFF',
-  surfaceElevated: '#F9F9FB',
+  surfaceElevated: '#F1F3F5',
   card: '#FFFFFF',
   
-  textPrimary: '#111111',
-  textSecondary: '#555555',
-  textMuted: '#888888',
+  textPrimary: '#212529',
+  textSecondary: '#495057',
+  textMuted: '#ADB5BD',
   
-  border: '#E0E0E0',
-  borderLight: '#EEEEEE',
+  border: '#DEE2E6',
+  borderLight: '#E9ECEF',
   
-  seatRegular: '#D0D0E0',
-  seatInactive: '#EAEAEA',
+  seatRegular: '#E9ECEF',
+  seatInactive: '#F8F9FA',
 };
 
 // Keep COLORS as default export to prevent breaking non-refactored screens during transition

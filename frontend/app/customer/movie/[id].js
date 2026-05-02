@@ -105,7 +105,20 @@ export default function MovieDetail() {
           {movie.cast?.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Cast</Text>
-              <Text style={styles.castText}>{movie.cast.join(' • ')}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SIZES.md }} contentContainerStyle={{ paddingHorizontal: SIZES.md, gap: 16 }}>
+                {movie.cast.map((actor, idx) => (
+                  <View key={idx} style={{ alignItems: 'center', width: 70 }}>
+                    <View style={styles.castAvatar}>
+                      {actor.photoUrl ? (
+                        <Image source={{ uri: actor.photoUrl }} style={{ width: '100%', height: '100%' }} />
+                      ) : (
+                        <Ionicons name="person" size={24} color={colors.textMuted} />
+                      )}
+                    </View>
+                    <Text style={styles.castName} numberOfLines={2} textAlign="center">{actor.name}</Text>
+                  </View>
+                ))}
+              </ScrollView>
             </>
           )}
 
@@ -148,26 +161,34 @@ export default function MovieDetail() {
           {slots.length === 0 ? (
             <Text style={styles.noSlots}>No showtimes available for this date.</Text>
           ) : (
-            slots.map((slot) => (
-              <TouchableOpacity
-                key={slot._id}
-                style={styles.slotCard}
-                onPress={() => router.push(`/customer/seats/${slot._id}`)}
-              >
-                <View>
-                  <Text style={styles.slotHall}>{slot.hall?.name} — {slot.hall?.screenType}</Text>
-                  <Text style={styles.slotTime}>
-                    {new Date(slot.startTime).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
-                    {' – '}
-                    {new Date(slot.endTime).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
+            Object.entries(
+              slots.reduce((acc, slot) => {
+                const branchName = slot.branch?.name || 'Unknown Cinema';
+                if (!acc[branchName]) acc[branchName] = [];
+                acc[branchName].push(slot);
+                return acc;
+              }, {})
+            ).map(([branch, branchSlots]) => (
+              <View key={branch} style={styles.cinemaGroup}>
+                <Text style={styles.cinemaTitle}>{branch}</Text>
+                <View style={styles.slotChipsContainer}>
+                  {branchSlots.map((slot) => {
+                    const timeStr = new Date(slot.startTime).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+                    const format = slot.hall?.screenType || '2D';
+                    const price = slot.pricing?.regular || 0;
+                    return (
+                      <TouchableOpacity
+                        key={slot._id}
+                        style={styles.timeChip}
+                        onPress={() => router.push(`/customer/seats/${slot._id}`)}
+                      >
+                        <Text style={styles.timeChipTime}>{timeStr} [{format}] </Text>
+                        <Text style={styles.timeChipPrice}>LKR {price}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
-                <View style={styles.priceArea}>
-                  <Text style={styles.priceFrom}>From</Text>
-                  <Text style={styles.price}>LKR {slot.pricing?.regular?.toLocaleString()}</Text>
-                  <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-                </View>
-              </TouchableOpacity>
+              </View>
             ))
           )}
 
@@ -215,22 +236,23 @@ const getStyles = (colors) => StyleSheet.create({
   genreTagText: { color: colors.textSecondary, fontSize: 12 },
   description: { color: colors.textSecondary, fontSize: 14, lineHeight: 22, marginBottom: 16 },
   sectionTitle: { fontSize: 17, fontWeight: 'bold', color: colors.textPrimary, marginTop: 16, marginBottom: 10 },
-  castText: { color: colors.textSecondary, fontSize: 13, lineHeight: 20 },
+  castAvatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: colors.surfaceElevated, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', marginBottom: 6, borderWidth: 1, borderColor: colors.border },
+  castName: { color: colors.textPrimary, fontSize: 11, textAlign: 'center' },
   statsCard: { backgroundColor: colors.card, borderRadius: SIZES.radius, padding: 14, borderWidth: 1, borderColor: colors.border },
   starRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   starLabel: { color: colors.textSecondary, fontSize: 13, width: 70 },
   starValue: { color: colors.accent, fontSize: 13, fontWeight: 'bold' },
-  dateChip: { width: 52, alignItems: 'center', paddingVertical: 8, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  dateChip: { width: 60, height: 60, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   dateChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   dateDay: { fontSize: 11, color: colors.textSecondary },
-  dateNum: { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary },
+  dateNum: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary },
   noSlots: { color: colors.textMuted, fontSize: 14, paddingVertical: 12 },
-  slotCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.card, borderRadius: SIZES.radius, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
-  slotHall: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 },
-  slotTime: { fontSize: 13, color: colors.textSecondary },
-  priceArea: { alignItems: 'flex-end', flexDirection: 'row', gap: 6 },
-  priceFrom: { fontSize: 11, color: colors.textMuted, alignSelf: 'flex-end' },
-  price: { fontSize: 14, fontWeight: 'bold', color: colors.primary },
+  cinemaGroup: { backgroundColor: colors.card, borderRadius: SIZES.radius, padding: SIZES.md, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
+  cinemaTitle: { fontSize: 15, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 12 },
+  slotChipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  timeChip: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, borderWidth: 1, borderColor: colors.primary },
+  timeChipTime: { color: colors.primary, fontSize: 12, fontWeight: '600' },
+  timeChipPrice: { color: colors.textSecondary, fontSize: 12 },
   reviewCard: { backgroundColor: colors.card, borderRadius: SIZES.radius, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
   reviewAuthor: { fontSize: 13, fontWeight: 'bold', color: colors.textPrimary },
   reviewComment: { fontSize: 13, color: colors.textSecondary, lineHeight: 20 },

@@ -9,6 +9,7 @@ import { SIZES } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useThemeStyles } from '../../utils/themeUtils';
+import ConfirmModal from '../../components/ConfirmModal';
 
 export default function ManagerMovies() {
   const { colors } = useTheme();
@@ -17,6 +18,7 @@ export default function ManagerMovies() {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ visible: false, id: null, title: '' });
 
   const fetchMovies = useCallback(async () => {
     try {
@@ -29,31 +31,18 @@ export default function ManagerMovies() {
 
   useEffect(() => { fetchMovies(); }, []);
 
-  const handleDelete = async (id, title) => {
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Deactivate "${title}"?`)) {
-        try {
-          await movieAPI.delete(id);
-          setMovies((prev) => prev.filter((m) => m._id !== id));
-        } catch (err) {
-          window.alert(err.response?.data?.message || 'Failed to deactivate.');
-        }
-      }
-    } else {
-      Alert.alert('Deactivate Movie', `Deactivate "${title}"?`, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Deactivate', style: 'destructive',
-          onPress: async () => {
-            try {
-              await movieAPI.delete(id);
-              setMovies((prev) => prev.filter((m) => m._id !== id));
-            } catch (err) {
-              Alert.alert('Error', err.response?.data?.message || 'Failed to deactivate.');
-            }
-          },
-        },
-      ]);
+  const requestDelete = (id, title) => {
+    setConfirmDelete({ visible: true, id, title });
+  };
+
+  const executeDelete = async () => {
+    const { id } = confirmDelete;
+    setConfirmDelete({ visible: false, id: null, title: '' });
+    try {
+      await movieAPI.delete(id);
+      setMovies((prev) => prev.filter((m) => m._id !== id));
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.message || 'Failed to deactivate.');
     }
   };
 
@@ -78,7 +67,7 @@ export default function ManagerMovies() {
         <TouchableOpacity onPress={() => router.push(`/manager/movie-edit/${item._id}`)}>
           <Ionicons name="pencil-outline" size={20} color={colors.accentSecondary} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item._id, item.title)} style={{ marginTop: 12 }}>
+        <TouchableOpacity onPress={() => requestDelete(item._id, item.title)} style={{ marginTop: 12 }}>
           <Ionicons name="trash-outline" size={20} color={colors.error} />
         </TouchableOpacity>
       </View>
@@ -106,6 +95,14 @@ export default function ManagerMovies() {
           ListEmptyComponent={<Text style={styles.empty}>No movies yet. Tap + to add one.</Text>}
         />
       )}
+      <ConfirmModal
+        visible={confirmDelete.visible}
+        title="Deactivate Movie"
+        message={`Are you sure you want to deactivate "${confirmDelete.title}"?`}
+        confirmText="Deactivate"
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete({ visible: false, id: null, title: '' })}
+      />
     </View>
   );
 }

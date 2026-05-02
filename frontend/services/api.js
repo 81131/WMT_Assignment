@@ -9,7 +9,7 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://10.0.2.2:5000/a
 
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 15000,
+  timeout: 60000,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -113,6 +113,9 @@ export const movieAPI = {
   delete: (id) => api.delete(`/movies/${id}`),
   uploadPoster: (id, formData) =>
     api.post(`/movies/${id}/poster`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getDistinctActors: () => api.get('/movies/actors/distinct'),
+  uploadActorImage: (formData) =>
+    api.post('/movies/upload-image', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 
 // --- Time Slots ---

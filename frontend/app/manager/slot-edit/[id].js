@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Platform } from 'react-native';
+import JSDatetimePicker from '../../../components/JSDatetimePicker';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { slotAPI, movieAPI, hallAPI, branchAPI } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
@@ -32,9 +33,14 @@ export default function SlotForm() {
   const [movies, setMovies] = useState([]);
   const [halls, setHalls] = useState([]);
   const [branches, setBranches] = useState([]);
-  const [form, setForm] = useState({ movie: '', hall: '', branch: isMain ? '' : String(user?.assignedBranch || ''), startTime: '', pricing: { regular: '500', vip: '1000', loveseat: '1200', producer: '1500', lobby: '800' } });
+  const [form, setForm] = useState({ 
+    movie: '', hall: '', branch: isMain ? '' : String(user?.assignedBranch || ''), 
+    startTime: '', interventionTime: '0',
+    pricing: { regular: '500', vip: '1000', loveseat: '1200', producer: '1500', lobby: '800' } 
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -49,7 +55,12 @@ export default function SlotForm() {
         if (isEdit) {
           const { data } = await slotAPI.getById(id);
           const s = data.timeSlot;
-          setForm({ movie: s.movie?._id || '', hall: s.hall?._id || '', branch: s.branch?._id || '', startTime: new Date(s.startTime).toISOString().slice(0, 16), pricing: { regular: String(s.pricing.regular), vip: String(s.pricing.vip), loveseat: String(s.pricing.loveseat), producer: String(s.pricing.producer), lobby: String(s.pricing.lobby) } });
+          setForm({ 
+            movie: s.movie?._id || '', hall: s.hall?._id || '', branch: s.branch?._id || '', 
+            startTime: new Date(s.startTime).toISOString(), 
+            interventionTime: String(s.interventionTime || 0),
+            pricing: { regular: String(s.pricing.regular), vip: String(s.pricing.vip), loveseat: String(s.pricing.loveseat), producer: String(s.pricing.producer), lobby: String(s.pricing.lobby) } 
+          });
         }
       } catch {}
       setLoading(false);
@@ -61,8 +72,9 @@ export default function SlotForm() {
     setSaving(true);
     try {
       const pricing = Object.fromEntries(Object.entries(form.pricing).map(([k, v]) => [k, parseFloat(v) || 0]));
-      const payload = { ...form, pricing };
-      if (isEdit) await slotAPI.update(id, { pricing });
+      const interventionTime = parseInt(form.interventionTime) || 0;
+      const payload = { ...form, pricing, interventionTime };
+      if (isEdit) await slotAPI.update(id, { pricing, interventionTime });
       else await slotAPI.create(payload);
       if (router.canGoBack()) router.back();
       else router.replace('/manager/slots');
@@ -93,8 +105,49 @@ export default function SlotForm() {
             <SelectList styles={styles} colors={colors} label="Movie *" data={movies} value={form.movie} onChange={(v) => setForm((f) => ({ ...f, movie: v }))} displayFn={(m) => `${m.title} (${m.duration} min)`} />
             <SelectList styles={styles} colors={colors} label="Hall *" data={filteredHalls} value={form.hall} onChange={(v) => setForm((f) => ({ ...f, hall: v }))} displayFn={(h) => `${h.name} — ${h.screenType}`} />
             <Text style={styles.label}>Start Date & Time *</Text>
-            <TextInput style={[styles.input, { marginBottom: SIZES.md }]} value={form.startTime} onChangeText={(v) => setForm((f) => ({ ...f, startTime: v }))} placeholder="YYYY-MM-DDTHH:MM (e.g. 2026-06-15T18:30)" placeholderTextColor={colors.textMuted} />
-            <Text style={styles.hint}>End time is auto-calculated from movie duration + 20 min buffer.</Text>
+            {Platform.OS === 'web' ? (
+              <input 
+                type="datetime-local"
+                style={{
+                  backgroundColor: colors.surface, borderRadius: 8, 
+                  border: `1px solid ${colors.border}`, padding: '0 14px', 
+                  height: 48, color: colors.textPrimary, fontSize: 14, 
+                  marginBottom: 16, width: '100%', outline: 'none', boxSizing: 'border-box'
+                }}
+                value={form.startTime ? form.startTime.slice(0, 16) : ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setForm(f => ({ ...f, startTime: new Date(e.target.value).toISOString() }));
+                  }
+                }}
+              />
+            ) : (
+              <>
+                <TouchableOpacity onPress={() => setShowPicker(true)}>
+                  <View style={[styles.input, { marginBottom: 16, justifyContent: 'center' }]}>
+                     <Text style={{ color: form.startTime ? colors.textPrimary : colors.textMuted }}>
+                       {form.startTime ? new Date(form.startTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Select Date & Time'}
+                     </Text>
+                  </View>
+                </TouchableOpacity>
+                <JSDatetimePicker
+                  visible={showPicker}
+                  initialDate={form.startTime ? new Date(form.startTime) : new Date()}
+                  onClose={() => setShowPicker(false)}
+                  onSelect={(date) => setForm(f => ({ ...f, startTime: date.toISOString() }))}
+                />
+              </>
+            )}
+            <Text style={styles.label}>Intervention Time (mins)</Text>
+            <TextInput 
+              style={[styles.input, { marginBottom: SIZES.md }]} 
+              value={form.interventionTime} 
+              onChangeText={(v) => setForm((f) => ({ ...f, interventionTime: v }))} 
+              keyboardType="numeric" 
+              placeholder="0" 
+              placeholderTextColor={colors.textMuted} 
+            />
+            <Text style={styles.hint}>End time is auto-calculated from movie duration + intervention time + 20 min buffer.</Text>
           </>
         )}
 
