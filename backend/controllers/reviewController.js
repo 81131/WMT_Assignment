@@ -7,11 +7,21 @@ exports.getReviews = async (req, res) => {
   if (req.query.movie) query.movie = req.query.movie;
   if (req.query.hall) query.hall = req.query.hall;
   if (req.query.branch) query.branch = req.query.branch;
-  const reviews = await Review.find(query)
+  let reviews = await Review.find(query)
     .populate('customer', 'name')
     .populate('movie', 'title')
     .populate('hall', 'name')
     .sort({ createdAt: -1 });
+    
+  if (req.user.role === 'customer') {
+    reviews = reviews.map(r => {
+      if (r.isBlurred) {
+        r.comment = '[This review has been hidden by a moderator.]';
+      }
+      return r;
+    });
+  }
+
   res.json({ success: true, count: reviews.length, reviews });
 };
 
@@ -85,4 +95,22 @@ exports.getMovieStats = async (req, res) => {
     },
   ]);
   res.json({ success: true, stats: stats[0] || { avgMovieRating: 0, totalReviews: 0 } });
+};
+// PUT /api/reviews/:id/moderate  — Manager only
+exports.moderateReview = async (req, res) => {
+  const { isBlurred, managerResponse } = req.body;
+  const review = await Review.findById(req.params.id);
+  
+  if (!review) return res.status(404).json({ success: false, message: 'Review not found.' });
+
+  // Branch managers can only moderate reviews for their branch
+  if (req.user.role === 'branch_manager' && review.branch.toString() !== req.user.assignedBranch?.toString()) {
+    return res.status(403).json({ success: false, message: 'Access denied to moderate this branch review.' });
+  }
+
+  if (isBlurred !== undefined) review.isBlurred = isBlurred;
+  if (managerResponse !== undefined) review.managerResponse = managerResponse;
+
+  await review.save();
+  res.json({ success: true, review });
 };

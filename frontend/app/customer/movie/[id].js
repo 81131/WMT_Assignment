@@ -205,6 +205,13 @@ export default function MovieDetail() {
                     ))}
                   </View>
                   <Text style={styles.reviewComment}>{r.comment}</Text>
+                  
+                  {r.managerResponse && (
+                    <View style={styles.managerResponseContainer}>
+                      <Text style={styles.managerResponseTitle}>Manager Response:</Text>
+                      <Text style={styles.managerResponseText}>{r.managerResponse}</Text>
+                    </View>
+                  )}
                 </View>
               ))}
             </>
@@ -256,4 +263,7 @@ const getStyles = (colors) => StyleSheet.create({
   reviewCard: { backgroundColor: colors.card, borderRadius: SIZES.radius, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
   reviewAuthor: { fontSize: 13, fontWeight: 'bold', color: colors.textPrimary },
   reviewComment: { fontSize: 13, color: colors.textSecondary, lineHeight: 20 },
+  managerResponseContainer: { marginTop: 8, padding: 8, backgroundColor: colors.surface, borderRadius: 6, borderLeftWidth: 2, borderLeftColor: colors.primary },
+  managerResponseTitle: { fontSize: 11, fontWeight: 'bold', color: colors.primary, marginBottom: 2 },
+  managerResponseText: { fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
 });

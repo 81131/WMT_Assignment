@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  Image, ActivityIndicator, RefreshControl,
+  Image, ActivityIndicator, RefreshControl, TextInput
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { bookingAPI } from '../../services/api';
+import { bookingAPI, reviewAPI } from '../../services/api';
 import { SIZES } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
@@ -24,6 +24,10 @@ export default function TicketsScreen() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [reviewForm, setReviewForm] = useState({ movieRating: 5, hallRating: 5, facilityRating: 5, comment: '' });
+  const [submittingReview, setSubmittingReview] = useState(false);
   const router = useRouter();
 
   const fetchTickets = async () => {
@@ -36,6 +40,29 @@ export default function TicketsScreen() {
   };
 
   useEffect(() => { fetchTickets(); }, []);
+
+  const openReviewModal = (ticket) => {
+    setSelectedTicket(ticket);
+    setReviewForm({ movieRating: 5, hallRating: 5, facilityRating: 5, comment: '' });
+    setReviewModalVisible(true);
+  };
+
+  const submitReview = async () => {
+    if (!selectedTicket) return;
+    setSubmittingReview(true);
+    try {
+      await reviewAPI.create({
+        bookingId: selectedTicket._id,
+        ...reviewForm
+      });
+      alert('Review submitted successfully! Thank you.');
+      setReviewModalVisible(false);
+      fetchTickets(); // Refresh to update status if needed
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to submit review');
+    }
+    setSubmittingReview(false);
+  };
 
   const renderTicket = ({ item }) => (
     <TouchableOpacity
@@ -62,8 +89,17 @@ export default function TicketsScreen() {
           <Ionicons name="barcode-outline" size={14} color={colors.textMuted} />
           <Text style={styles.code}>{item.ticketCode || 'Pending payment'}</Text>
         </View>
+        </View>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+      <View style={{ alignItems: 'center' }}>
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        {item.status === 'used' && (
+          <TouchableOpacity style={styles.reviewBtn} onPress={() => openReviewModal(item)}>
+            <Ionicons name="star" size={14} color="#FFF" />
+            <Text style={styles.reviewBtnText}>Review</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </TouchableOpacity>
   );
 
@@ -90,6 +126,63 @@ export default function TicketsScreen() {
           }
         />
       )}
+
+      {/* Review Modal */}
+      {reviewModalVisible && selectedTicket && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Rate Your Experience</Text>
+            <Text style={styles.modalSubtitle}>{selectedTicket.movie?.title}</Text>
+
+            <Text style={styles.label}>Movie Rating</Text>
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity key={star} onPress={() => setReviewForm({ ...reviewForm, movieRating: star })}>
+                  <Ionicons name={star <= reviewForm.movieRating ? 'star' : 'star-outline'} size={28} color={colors.primary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.label}>Hall Experience</Text>
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity key={star} onPress={() => setReviewForm({ ...reviewForm, hallRating: star })}>
+                  <Ionicons name={star <= reviewForm.hallRating ? 'star' : 'star-outline'} size={24} color={colors.primary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.label}>Facilities Rating</Text>
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity key={star} onPress={() => setReviewForm({ ...reviewForm, facilityRating: star })}>
+                  <Ionicons name={star <= reviewForm.facilityRating ? 'star' : 'star-outline'} size={24} color={colors.primary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.label}>Comments (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="How was the movie?"
+              placeholderTextColor={colors.textMuted}
+              multiline
+              numberOfLines={3}
+              value={reviewForm.comment}
+              onChangeText={(text) => setReviewForm({ ...reviewForm, comment: text })}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setReviewModalVisible(false)}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.submitBtn} onPress={submitReview} disabled={submittingReview}>
+                {submittingReview ? <ActivityIndicator size="small" color="#000" /> : <Text style={styles.submitBtnText}>Submit</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -112,4 +205,18 @@ const getStyles = (colors) => StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyText: { color: colors.textPrimary, fontSize: 18, fontWeight: 'bold', marginTop: 16 },
   emptySubtext: { color: colors.textMuted, fontSize: 13, marginTop: 6 },
+  reviewBtn: { backgroundColor: colors.primary, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, marginRight: 8 },
+  reviewBtnText: { color: '#000', fontSize: 12, fontWeight: 'bold' },
+  modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+  modalContent: { width: '85%', backgroundColor: colors.card, borderRadius: SIZES.radiusLg, padding: SIZES.lg, borderWidth: 1, borderColor: colors.border },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary, textAlign: 'center' },
+  modalSubtitle: { fontSize: 14, color: colors.primary, textAlign: 'center', marginBottom: 20, fontWeight: 'bold' },
+  label: { color: colors.textSecondary, fontSize: 12, marginTop: 10, marginBottom: 4 },
+  starsContainer: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  input: { backgroundColor: colors.surface, color: colors.textPrimary, borderRadius: 8, padding: 12, borderWidth: 1, borderColor: colors.border, textAlignVertical: 'top', marginTop: 4 },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 24 },
+  cancelBtn: { paddingVertical: 10, paddingHorizontal: 16 },
+  cancelBtnText: { color: colors.textSecondary, fontWeight: 'bold' },
+  submitBtn: { backgroundColor: colors.primary, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
+  submitBtnText: { color: '#000', fontWeight: 'bold' },
 });

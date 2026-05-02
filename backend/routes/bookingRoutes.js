@@ -18,6 +18,6 @@ router.put('/bookings/:id/cancel', protect, requireRole('customer'), ctrl.cancel
 // Tickets
 router.get('/tickets/my', protect, requireRole('customer'), ctrl.getMyTickets);
 router.get('/tickets/:code', protect, ctrl.getTicketByCode);
-router.post('/tickets/:code/validate', protect, requireRole('hall_employee'), ctrl.validateTicket);
+router.post('/tickets/:code/validate', protect, requireRole('hall_employee', 'branch_manager', 'main_manager'), ctrl.validateTicket);
 
 module.exports = router;

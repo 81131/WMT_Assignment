@@ -64,6 +64,8 @@ export default function ManagerDashboard() {
     ] : []),
     { icon: 'grid-outline', label: 'Halls', route: '/manager/halls', color: colors.seatProducer },
     { icon: 'people-outline', label: 'Staff', route: '/manager/staff', color: colors.success },
+    { icon: 'scan-outline', label: 'Scanner', route: '/manager/scanner', color: colors.info },
+    { icon: 'star-outline', label: 'Reviews', route: '/manager/reviews', color: colors.warning },
   ];
 
   return (

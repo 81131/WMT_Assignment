@@ -192,10 +192,16 @@ exports.validateTicket = async (req, res) => {
     return res.status(400).json({ success: false, message: `Ticket status is '${booking.status}'. Must be 'confirmed'.` });
   }
 
-  // Check employee is assigned to this hall
-  const employee = req.user;
-  if (!employee.assignedHalls?.map(String).includes(booking.hall._id.toString())) {
-    return res.status(403).json({ success: false, message: 'You are not assigned to this hall.' });
+  // Check employee is assigned to this hall or is a manager
+  const user = req.user;
+  if (user.role === 'hall_employee') {
+    if (!user.assignedHalls?.map(String).includes(booking.hall._id.toString())) {
+      return res.status(403).json({ success: false, message: 'You are not assigned to this hall.' });
+    }
+  } else if (user.role === 'branch_manager') {
+    if (user.assignedBranch?.toString() !== booking.branch.toString()) {
+      return res.status(403).json({ success: false, message: 'You are not assigned to this branch.' });
+    }
   }
 
   // Time window: within ±60 minutes of showtime start
@@ -211,7 +217,7 @@ exports.validateTicket = async (req, res) => {
 
   booking.status = 'used';
   booking.usedAt = now;
-  booking.scannedBy = employee._id;
+  booking.scannedBy = user._id;
   await booking.save();
 
   res.json({ success: true, message: 'Ticket validated. Welcome!', ticket: booking });

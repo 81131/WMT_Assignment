@@ -57,6 +57,8 @@ export default function AppLayout({ children, role }) {
       { name: 'Branches', path: '/manager/branches', icon: 'business-outline' },
       { name: 'Staff', path: '/manager/staff', icon: 'people-outline' },
       { name: 'Time Slots', path: '/manager/slots', icon: 'time-outline' },
+      { name: 'Scanner', path: '/manager/scanner', icon: 'scan-outline' },
+      { name: 'Reviews', path: '/manager/reviews', icon: 'star-outline' },
     ],
     employee: [
       { name: 'Scan Ticket', path: '/employee/scan', icon: 'qr-code-outline' },

@@ -146,6 +146,7 @@ export const reviewAPI = {
   getStats: (movieId) => api.get(`/reviews/stats/${movieId}`),
   create: (data) => api.post('/reviews', data),
   update: (id, data) => api.put(`/reviews/${id}`, data),
+  moderate: (id, data) => api.put(`/reviews/${id}/moderate`, data),
   delete: (id) => api.delete(`/reviews/${id}`),
 };
 
