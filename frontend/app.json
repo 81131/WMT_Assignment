@@ -11,19 +11,46 @@
       "resizeMode": "contain",
       "backgroundColor": "#0D0D1A"
     },
-    "assetBundlePatterns": ["**/*"],
-    "ios": { "supportsTablet": true, "bundleIdentifier": "lk.cinema.app" },
-    "android": {
-      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#0D0D1A" },
-      "package": "lk.cinema.app"
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "lk.cinema.app"
     },
-    "web": { "favicon": "./assets/favicon.png" },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0D0D1A"
+      },
+      "package": "lk.cinema.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
     "scheme": "cinemaapp",
     "plugins": [
       "expo-router",
-      "expo-barcode-scanner",
-      ["expo-camera", { "cameraPermission": "Allow CinemaApp to access your camera for ticket scanning." }]
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow CinemaApp to access your camera for ticket scanning."
+        }
+      ],
+      "@react-native-community/datetimepicker"
     ],
-    "experiments": { "typedRoutes": true }
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4b3df8be-92fc-48ad-a938-af629f33a874"
+      }
+    }
   }
 }
