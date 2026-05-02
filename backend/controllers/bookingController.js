@@ -175,14 +175,19 @@ exports.validateTicket = async (req, res) => {
     }
   }
 
-  // Time window: within ±60 minutes of showtime start
+  // Time window: 60 min before showtime up to 120 min after (covers entry + movie duration grace)
   const now = new Date();
   const start = new Date(booking.timeSlot.startTime);
-  const diffMinutes = (now - start) / 60000;
-  if (diffMinutes < -60 || diffMinutes > 30) {
+  const diffMinutes = (now - start) / 60000; // positive = after showtime, negative = before
+  if (diffMinutes < -60 || diffMinutes > 120) {
+    const localTime = start.toLocaleString('en-US', {
+      dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Colombo'
+    });
+    const windowOpen  = new Date(start.getTime() - 60 * 60000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Colombo' });
+    const windowClose = new Date(start.getTime() + 120 * 60000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Colombo' });
     return res.status(400).json({
       success: false,
-      message: `Ticket not valid at this time. Show starts at ${start.toISOString()}.`,
+      message: `Ticket is only valid between ${windowOpen} and ${windowClose} (show starts at ${localTime}).`,
     });
   }
 
