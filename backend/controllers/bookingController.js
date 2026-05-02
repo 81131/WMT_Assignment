@@ -4,9 +4,7 @@ const SeatLock = require('../models/SeatLock');
 const TimeSlot = require('../models/TimeSlot');
 const { nanoid } = require('nanoid');
 const { generateAndUploadQR } = require('../utils/qrGenerator');
-const { generatePayHereHash } = require('../utils/payhere');
-
-// POST /api/seats/lock  — Lock seats for 10 minutes
+const { generateAndUploadQR } = require('../utils/qrGenerator');
 exports.lockSeats = async (req, res) => {
   const { timeSlotId, seatIds } = req.body;
   if (!timeSlotId || !Array.isArray(seatIds) || seatIds.length === 0) {
@@ -50,9 +48,13 @@ exports.releaseSeats = async (req, res) => {
   res.json({ success: true, message: 'Seat locks released.' });
 };
 
-// POST /api/payments/initiate
-exports.initiatePayment = async (req, res) => {
-  const { timeSlotId, seatIds } = req.body;
+// POST /api/payments/process
+exports.processPayment = async (req, res) => {
+  const { timeSlotId, seatIds, cardNumber, nameOnCard, expiryDate, cvv } = req.body;
+
+  if (!timeSlotId || !seatIds || !cardNumber || !nameOnCard || !expiryDate || !cvv) {
+    return res.status(400).json({ success: false, message: 'All payment fields are required.' });
+  }
 
   const slot = await TimeSlot.findById(timeSlotId).populate('movie hall branch');
   if (!slot) return res.status(404).json({ success: false, message: 'Time slot not found.' });
@@ -73,8 +75,37 @@ exports.initiatePayment = async (req, res) => {
   });
   const totalAmount = seatDetails.reduce((sum, s) => sum + s.price, 0);
 
-  // Create pending booking
+  // Validate Dummy Card
+  const cleanCard = cardNumber.replace(/\s/g, '');
+  const successCards = ['4916217501611292', '5307732125531191', '346781005510225'];
+  const errorCards = {
+    '4024007194349121': 'Insufficient Funds',
+    '5459051433777487': 'Insufficient Funds',
+    '370787711978928': 'Insufficient Funds',
+    '4929119799365646': 'Limit Exceeded',
+    '5491182243178283': 'Limit Exceeded',
+    '340701811823469': 'Limit Exceeded',
+    '4929768900837248': 'Do Not Honor',
+    '5388172137367973': 'Do Not Honor',
+    '374664175202812': 'Do Not Honor',
+    '4024007120869333': 'Network Error',
+    '5237980565185003': 'Network Error',
+    '373433500205887': 'Network Error',
+  };
+
+  if (errorCards[cleanCard]) {
+    return res.status(400).json({ success: false, message: `Payment Declined: ${errorCards[cleanCard]}` });
+  }
+
+  if (!successCards.includes(cleanCard)) {
+    return res.status(400).json({ success: false, message: 'Payment Declined: Invalid Card Number' });
+  }
+
+  // Payment Success - Create booking
   const orderId = `ORD-${nanoid(10).toUpperCase()}`;
+  const ticketCode = nanoid(10).toUpperCase();
+  const qrCodeUrl = await generateAndUploadQR(ticketCode);
+
   const booking = await Booking.create({
     customer: req.user._id,
     timeSlot: slot._id,
@@ -83,81 +114,22 @@ exports.initiatePayment = async (req, res) => {
     branch: slot.branch._id,
     seats: seatDetails,
     totalAmount,
-    status: 'pending',
+    status: 'confirmed',
     paymentOrderId: orderId,
-    paymentStatus: 'pending',
+    paymentStatus: 'paid',
+    ticketCode,
+    qrCodeUrl
   });
 
-  // Generate PayHere hash
-  const hash = generatePayHereHash(
-    process.env.PAYHERE_MERCHANT_ID,
-    orderId,
-    totalAmount,
-    'LKR',
-    process.env.PAYHERE_MERCHANT_SECRET
-  );
+  // Release seat locks
+  await SeatLock.deleteMany({ timeSlot: slot._id, lockedBy: req.user._id });
 
   res.json({
     success: true,
+    message: 'Payment Successful',
     bookingId: booking._id,
-    paymentParams: {
-      merchant_id: process.env.PAYHERE_MERCHANT_ID,
-      return_url: process.env.PAYHERE_RETURN_URL,
-      cancel_url: process.env.PAYHERE_CANCEL_URL,
-      notify_url: process.env.PAYHERE_NOTIFY_URL,
-      order_id: orderId,
-      items: `Cinema Tickets - ${slot.movie.title}`,
-      currency: 'LKR',
-      amount: totalAmount.toFixed(2),
-      first_name: req.user.name.split(' ')[0],
-      last_name: req.user.name.split(' ').slice(1).join(' ') || 'N/A',
-      email: req.user.email,
-      phone: '0771234567',
-      address: slot.branch.address,
-      city: slot.branch.city,
-      country: 'Sri Lanka',
-      hash,
-      sandbox: process.env.PAYHERE_SANDBOX === 'true',
-      checkout_url: process.env.PAYHERE_CHECKOUT_URL,
-    },
+    ticketCode
   });
-};
-
-// POST /api/payments/webhook  — PayHere notification (public)
-exports.payhereWebhook = async (req, res) => {
-  const { verifyPayHereWebhook } = require('../utils/payhere');
-  const isValid = verifyPayHereWebhook(req.body, process.env.PAYHERE_MERCHANT_SECRET);
-
-  if (!isValid) {
-    console.warn('[PayHere Webhook] Invalid signature received:', req.body);
-    return res.status(400).send('Invalid signature');
-  }
-
-  const { order_id: orderId, status_code: statusCode } = req.body;
-  const booking = await Booking.findOne({ paymentOrderId: orderId });
-  if (!booking) return res.status(404).send('Booking not found');
-
-  if (statusCode === '2') {
-    // Payment success
-    const ticketCode = nanoid(10).toUpperCase();
-    const qrCodeUrl = await generateAndUploadQR(ticketCode);
-
-    booking.status = 'confirmed';
-    booking.paymentStatus = 'paid';
-    booking.ticketCode = ticketCode;
-    booking.qrCodeUrl = qrCodeUrl;
-    await booking.save();
-
-    // Release seat locks since booking is confirmed
-    await SeatLock.deleteMany({ timeSlot: booking.timeSlot, lockedBy: booking.customer });
-  } else if (statusCode === '-1') {
-    booking.paymentStatus = 'failed';
-    booking.status = 'cancelled';
-    await booking.save();
-    await SeatLock.deleteMany({ timeSlot: booking.timeSlot, lockedBy: booking.customer });
-  }
-
-  res.status(200).send('OK');
 };
 
 // GET /api/tickets/my  — Customer's tickets

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator, Platform
+  Alert, ActivityIndicator, Platform, TextInput, KeyboardAvoidingView
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { WebView } from 'react-native-webview';
 import { bookingAPI, slotAPI } from '../../services/api';
 import { SIZES } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,10 +15,17 @@ export default function CheckoutScreen() {
   const styles = useThemeStyles(getStyles);
   const { slotId, seats: seatsParam, total } = useLocalSearchParams();
   const router = useRouter();
+  
   const [slot, setSlot] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [payParams, setPayParams] = useState(null);
-  const [showPayhere, setShowPayhere] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+
+  // Payment Form State
+  const [cardNumber, setCardNumber] = useState('4916217501611292');
+  const [nameOnCard, setNameOnCard] = useState('John Doe');
+  const [expiryDate, setExpiryDate] = useState('12/26');
+  const [cvv, setCvv] = useState('123');
 
   const seatIds = JSON.parse(seatsParam || '[]');
 
@@ -30,93 +36,132 @@ export default function CheckoutScreen() {
     </View>
   );
 
-  useEffect(() => { fetchSlotAndInitiate(); }, []);
+  useEffect(() => { 
+    const fetchSlot = async () => {
+      try {
+        const slotRes = await slotAPI.getById(slotId);
+        setSlot(slotRes.data.timeSlot);
+      } catch (err) {
+        Alert.alert('Error', 'Could not load booking details.');
+        router.back();
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSlot(); 
+  }, []);
 
-  const fetchSlotAndInitiate = async () => {
-    try {
-      const slotRes = await slotAPI.getById(slotId);
-      setSlot(slotRes.data.timeSlot);
-      const payRes = await bookingAPI.initiatePayment({ timeSlotId: slotId, seatIds });
-      setPayParams(payRes.data.paymentParams);
-    } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Could not initiate payment.');
-      if (router.canGoBack()) router.back();
-      else router.replace('/customer/home');
-    } finally {
-      setLoading(false);
+  const handlePayment = async () => {
+    if (!cardNumber || !nameOnCard || !expiryDate || !cvv) {
+      return Alert.alert('Validation Error', 'All payment fields are required.');
     }
-  };
 
-  // Build PayHere HTML form for WebView
-  const buildPayhereHtml = (p) => `
-    <!DOCTYPE html><html><body onload="document.forms[0].submit()">
-    <form method="POST" action="${p.checkout_url}">
-      ${Object.entries(p).filter(([k]) => !['checkout_url','sandbox'].includes(k)).map(([k,v]) => `<input type="hidden" name="${k}" value="${v}">`).join('')}
-    </form>
-    <p style="font-family:sans-serif;text-align:center;margin-top:40px;color:#888">Redirecting to PayHere...</p>
-    </body></html>
-  `;
-
-  const handleWebViewNav = (navState) => {
-    const url = navState.url;
-    if (url.includes('payment/success') || url.includes('cinemaapp://payment/success')) {
-      setShowPayhere(false);
-      router.replace('/customer/tickets');
-    } else if (url.includes('payment/cancel') || url.includes('cinemaapp://payment/cancel')) {
-      setShowPayhere(false);
-      Alert.alert('Payment Cancelled', 'Your seat hold will expire in 10 minutes.');
+    setProcessing(true);
+    try {
+      const res = await bookingAPI.processPayment({
+        timeSlotId: slotId,
+        seatIds,
+        cardNumber,
+        nameOnCard,
+        expiryDate,
+        cvv
+      });
+      
+      Alert.alert('Success', 'Payment Successful! Your ticket has been generated.', [
+        { text: 'View Tickets', onPress: () => router.replace('/customer/tickets') }
+      ]);
+    } catch (err) {
+      Alert.alert('Payment Failed', err.response?.data?.message || 'Transaction could not be processed.');
+    } finally {
+      setProcessing(false);
     }
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
 
-  if (showPayhere && payParams) {
+  if (showPaymentForm) {
     return (
-      <View style={{ flex: 1 }}>
-        <View style={styles.webviewHeader}>
-          <TouchableOpacity onPress={() => setShowPayhere(false)}>
-            <Ionicons name="close" size={24} color={colors.textPrimary} />
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setShowPaymentForm(false)}>
+            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.webviewTitle}>Secure Payment</Text>
-          <Ionicons name="shield-checkmark" size={20} color={colors.success} />
+          <Text style={styles.headerTitle}>Secure Payment</Text>
         </View>
-        {Platform.OS === 'web' ? (
-          <View style={{ padding: 20, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={{ marginTop: 20, color: colors.textSecondary }}>Redirecting to secure payment gateway...</Text>
-            {/* Inject and submit hidden form */}
-            <iframe
-              name="payhere_frame"
-              style={{ display: 'none' }}
-              onLoad={(e) => {
-                if (e.target.contentWindow.location.href.includes('payment/success')) {
-                  setShowPayhere(false);
-                  router.replace('/customer/tickets');
-                }
-              }}
+        
+        <ScrollView contentContainerStyle={{ padding: SIZES.md }}>
+          <View style={styles.card}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+              <Text style={styles.cardTitle}>Credit/Debit Card</Text>
+              <View style={{ flexDirection: 'row', gap: 5 }}>
+                <Ionicons name="card" size={24} color={colors.primary} />
+              </View>
+            </View>
+
+            <Text style={styles.label}>Name on Card</Text>
+            <TextInput
+              style={styles.input}
+              value={nameOnCard}
+              onChangeText={setNameOnCard}
+              placeholder="John Doe"
+              placeholderTextColor={colors.textMuted}
             />
-            <form id="payhere_form" method="POST" action={payParams.checkout_url} target={Platform.OS === 'web' ? '_self' : 'payhere_frame'} style={{ display: 'none' }}>
-              {Object.entries(payParams)
-                .filter(([k]) => !['checkout_url', 'sandbox'].includes(k))
-                .map(([k, v]) => (
-                  <input key={k} type="hidden" name={k} value={v} />
-                ))}
-            </form>
-            {Platform.OS === 'web' && setTimeout(() => document.getElementById('payhere_form').submit(), 1000) && null}
+
+            <Text style={styles.label}>Card Number</Text>
+            <TextInput
+              style={styles.input}
+              value={cardNumber}
+              onChangeText={setCardNumber}
+              placeholder="0000 0000 0000 0000"
+              keyboardType="number-pad"
+              placeholderTextColor={colors.textMuted}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Expiry Date</Text>
+                <TextInput
+                  style={styles.input}
+                  value={expiryDate}
+                  onChangeText={setExpiryDate}
+                  placeholder="MM/YY"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>CVV</Text>
+                <TextInput
+                  style={styles.input}
+                  value={cvv}
+                  onChangeText={setCvv}
+                  placeholder="123"
+                  keyboardType="number-pad"
+                  secureTextEntry
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+            </View>
+
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total to Pay</Text>
+              <Text style={styles.totalValue}>LKR {parseInt(total).toLocaleString()}</Text>
+            </View>
+
+            <TouchableOpacity style={styles.payBtn} onPress={handlePayment} disabled={processing}>
+              {processing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="lock-closed" size={18} color="#fff" />
+                  <Text style={styles.payBtnText}>Pay LKR {parseInt(total).toLocaleString()}</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
-        ) : (
-          <WebView
-            source={{ html: buildPayhereHtml(payParams) }}
-            onNavigationStateChange={handleWebViewNav}
-            startInLoadingState
-            renderLoading={() => <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />}
-          />
-        )}
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   }
-
-  const seatObjs = seatIds.map((id) => ({ seatId: id }));
 
   return (
     <View style={styles.container}>
@@ -127,7 +172,6 @@ export default function CheckoutScreen() {
         <Text style={styles.headerTitle}>Checkout</Text>
       </View>
       <ScrollView contentContainerStyle={{ padding: SIZES.md }}>
-        {/* Movie summary */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Booking Summary</Text>
           {slot && (
@@ -140,7 +184,6 @@ export default function CheckoutScreen() {
           )}
         </View>
 
-        {/* Seats */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Selected Seats</Text>
           <View style={styles.seatChips}>
@@ -150,39 +193,30 @@ export default function CheckoutScreen() {
           </View>
         </View>
 
-        {/* Seat hold notice */}
         <View style={styles.holdNotice}>
           <Ionicons name="time-outline" size={16} color={colors.warning} />
           <Text style={styles.holdText}>Your seats are held for <Text style={{ fontWeight: 'bold' }}>10 minutes</Text>. Complete payment promptly.</Text>
         </View>
 
-        {/* Total */}
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total Amount</Text>
           <Text style={styles.totalValue}>LKR {parseInt(total).toLocaleString()}</Text>
         </View>
 
-        {/* Pay button */}
-        <TouchableOpacity style={styles.payBtn} onPress={() => setShowPayhere(true)}>
+        <TouchableOpacity style={styles.payBtn} onPress={() => setShowPaymentForm(true)}>
           <Ionicons name="card-outline" size={20} color="#fff" />
-          <Text style={styles.payBtnText}>Pay with PayHere</Text>
+          <Text style={styles.payBtnText}>Proceed to Payment</Text>
         </TouchableOpacity>
-
-        <Text style={styles.secureNote}>🔒 Secured by PayHere payment gateway</Text>
       </ScrollView>
     </View>
   );
 }
-
-
 
 const getStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   header: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: SIZES.md, paddingTop: 52, borderBottomWidth: 1, borderColor: colors.border },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary },
-  webviewHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SIZES.md, paddingTop: 52, backgroundColor: colors.card, borderBottomWidth: 1, borderColor: colors.border },
-  webviewTitle: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary },
   card: { backgroundColor: colors.card, borderRadius: SIZES.radius, padding: SIZES.md, marginBottom: SIZES.md, borderWidth: 1, borderColor: colors.border },
   cardTitle: { fontSize: 15, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 10 },
   seatChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -190,10 +224,11 @@ const getStyles = (colors) => StyleSheet.create({
   seatChipText: { color: colors.primary, fontWeight: 'bold', fontSize: 13 },
   holdNotice: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.warning + '22', borderRadius: SIZES.radius, padding: 12, marginBottom: SIZES.md, borderWidth: 1, borderColor: colors.warning + '44' },
   holdText: { color: colors.warning, fontSize: 13, flex: 1 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SIZES.lg },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: SIZES.md },
   totalLabel: { fontSize: 16, color: colors.textSecondary },
   totalValue: { fontSize: 24, fontWeight: 'bold', color: colors.textPrimary },
   payBtn: { backgroundColor: colors.primary, borderRadius: SIZES.radius, height: 54, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
   payBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  secureNote: { textAlign: 'center', color: colors.textMuted, fontSize: 12, marginTop: 12 },
+  label: { color: colors.textSecondary, fontSize: 13, marginBottom: 6, marginTop: 12 },
+  input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, color: colors.textPrimary, fontSize: 15, ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) }
 });

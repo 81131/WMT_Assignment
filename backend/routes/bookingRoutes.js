@@ -8,8 +8,7 @@ router.post('/seats/lock', protect, requireRole('customer'), ctrl.lockSeats);
 router.delete('/seats/lock', protect, requireRole('customer'), ctrl.releaseSeats);
 
 // Payments
-router.post('/payments/initiate', protect, requireRole('customer'), ctrl.initiatePayment);
-router.post('/payments/webhook', ctrl.payhereWebhook); // Public — no auth
+router.post('/payments/process', protect, requireRole('customer'), ctrl.processPayment);
 
 // Bookings
 router.get('/bookings/my', protect, requireRole('customer'), ctrl.getMyBookings);

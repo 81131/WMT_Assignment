@@ -84,7 +84,9 @@ export default function SeatPicker() {
   }, {});
 
   const numCols = slot ? slot.hall?.layoutConfig?.cols || 10 : 10;
-  const cellSize = Math.min(Math.floor((width - 40) / numCols) - 2, 36);
+  const cellSize = Platform.OS === 'web' 
+    ? Math.max(Math.min(Math.floor((width - 40) / numCols) - 2, 40), 32) 
+    : Math.min(Math.floor((width - 40) / numCols) - 2, 36);
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
 
@@ -121,7 +123,7 @@ export default function SeatPicker() {
                 return (
                   <TouchableOpacity
                     key={seat.seatId}
-                    style={[styles.seatCell, { width: cellSize, height: cellSize, backgroundColor: seatColor(seat) }]}
+                    style={[styles.seatCell, { width: cellSize, height: cellSize, minWidth: cellSize, minHeight: cellSize, backgroundColor: seatColor(seat) }]}
                     onPress={() => toggleSeat(seat)}
                     disabled={['booked', 'locked', 'inactive'].includes(seat.status)}
                   >

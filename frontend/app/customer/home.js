@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  Image, TextInput, ActivityIndicator, RefreshControl, ScrollView, Modal
+  Image, TextInput, ActivityIndicator, RefreshControl, ScrollView, Modal, Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { movieAPI, slotAPI } from '../../services/api';
@@ -265,8 +265,8 @@ const getStyles = (colors) => StyleSheet.create({
   tabBtnText: { color: colors.textSecondary, fontWeight: '600' },
   tabBtnTextActive: { color: '#000' },
 
-  movieGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SIZES.md, justifyContent: 'space-between' },
-  card: { width: '48%', marginBottom: 20 },
+  movieGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SIZES.md, justifyContent: 'flex-start', gap: 16 },
+  card: { width: Platform.OS === 'web' ? 200 : '48%', marginBottom: 20 },
   cardImageContainer: { position: 'relative', width: '100%', aspectRatio: 0.67, borderRadius: SIZES.radius, overflow: 'hidden' },
   poster: { width: '100%', height: '100%' },
   posterPlaceholder: { backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
