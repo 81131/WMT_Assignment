@@ -90,7 +90,9 @@ export default function AppLayout({ children, role }) {
 
       {/* Main Content */}
       <View style={styles.content}>
-        {children}
+        {Platform.OS === 'web' ? (
+          <View style={styles.contentInner}>{children}</View>
+        ) : children}
       </View>
 
       {/* Footer */}
@@ -167,7 +169,8 @@ const getStyles = (colors) => StyleSheet.create({
   themeBtn: { padding: 4, marginRight: 10 },
   userName: { color: colors.textSecondary, marginRight: 10, fontSize: 14 },
   logoutBtn: { padding: 4 },
-  content: { flex: 1 },
+  content: { flex: 1, ...(Platform.OS === 'web' ? { alignItems: 'center', overflowY: 'auto' } : {}) },
+  contentInner: { flex: 1, width: '100%', maxWidth: 1100, alignSelf: 'center' },
   footer: {
     padding: SIZES.sm,
     backgroundColor: colors.card,

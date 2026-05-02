@@ -53,12 +53,14 @@ export default function CheckoutScreen() {
 
   const handlePayment = async () => {
     if (!cardNumber || !nameOnCard || !expiryDate || !cvv) {
-      return Alert.alert('Validation Error', 'All payment fields are required.');
+      if (Platform.OS === 'web') window.alert('All payment fields are required.');
+      else Alert.alert('Validation Error', 'All payment fields are required.');
+      return;
     }
 
     setProcessing(true);
     try {
-      const res = await bookingAPI.processPayment({
+      await bookingAPI.processPayment({
         timeSlotId: slotId,
         seatIds,
         cardNumber,
@@ -66,12 +68,20 @@ export default function CheckoutScreen() {
         expiryDate,
         cvv
       });
-      
-      Alert.alert('Success', 'Payment Successful! Your ticket has been generated.', [
-        { text: 'View Tickets', onPress: () => router.replace('/customer/tickets') }
-      ]);
+
+      // Navigate immediately — Alert callback is unreliable on web
+      if (Platform.OS === 'web') {
+        window.alert('Payment Successful! Your ticket has been generated.');
+        router.replace('/customer/tickets');
+      } else {
+        Alert.alert('Payment Successful!', 'Your ticket has been generated.', [
+          { text: 'View Tickets', onPress: () => router.replace('/customer/tickets') }
+        ]);
+      }
     } catch (err) {
-      Alert.alert('Payment Failed', err.response?.data?.message || 'Transaction could not be processed.');
+      const msg = err.response?.data?.message || 'Transaction could not be processed.';
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Payment Failed', msg);
     } finally {
       setProcessing(false);
     }
@@ -89,8 +99,11 @@ export default function CheckoutScreen() {
           <Text style={styles.headerTitle}>Secure Payment</Text>
         </View>
         
-        <ScrollView contentContainerStyle={{ padding: SIZES.md }}>
-          <View style={styles.card}>
+        <ScrollView contentContainerStyle={[
+          { padding: SIZES.md },
+          Platform.OS === 'web' && { alignItems: 'center' }
+        ]}>
+          <View style={[styles.card, Platform.OS === 'web' && { width: '100%', maxWidth: 480 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
               <Text style={styles.cardTitle}>Credit/Debit Card</Text>
               <View style={{ flexDirection: 'row', gap: 5 }}>
