@@ -89,7 +89,7 @@ export default function MovieDetail() {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Poster */}
+        {/* Hero Banner — full-width poster with deep gradient */}
         <View style={styles.posterContainer}>
           {movie.posterUrl ? (
             <Image source={{ uri: movie.posterUrl }} style={styles.poster} resizeMode="cover" />
@@ -98,32 +98,63 @@ export default function MovieDetail() {
               <Ionicons name="film" size={60} color={colors.textMuted} />
             </View>
           )}
+          {/* Deep cinema gradient overlay — fades from transparent top to black bottom */}
           <View style={styles.posterOverlay} />
+
+          {/* Back button */}
           <TouchableOpacity style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/customer/home')}>
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
+
+          {/* On web: overlay movie info on the hero */}
+          {Platform.OS === 'web' && (
+            <View style={styles.heroContent}>
+              <View style={styles.genreRow}>
+                {(movie.genre || []).map((g) => (
+                  <View key={g} style={styles.genreTagHero}><Text style={styles.genreTagHeroText}>{g}</Text></View>
+                ))}
+              </View>
+              <Text style={styles.heroTitle}>{movie.title.toUpperCase()}</Text>
+              <Text style={styles.heroMeta}>{movie.language} · {movie.duration} min</Text>
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
+                <TouchableOpacity style={styles.bookBtn} onPress={() => {}}>
+                  <Text style={styles.bookBtnText}>Book Tickets</Text>
+                </TouchableOpacity>
+                {movie.trailerUrl && (
+                  <TouchableOpacity style={styles.trailerBtnHero} onPress={() => setShowTrailer(true)}>
+                    <Ionicons name="play" size={14} color="#fff" />
+                    <Text style={styles.trailerBtnHeroText}>Watch Trailer</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
         </View>
 
         <View style={styles.body}>
-          {/* Title & badges */}
-          <View style={styles.row}>
-            <View style={styles.ratingBadge}><Text style={styles.ratingText}>{movie.rating}</Text></View>
-            <Text style={styles.duration}>{movie.duration} min</Text>
-            <Text style={styles.language}>{movie.language}</Text>
-          </View>
-          <Text style={styles.title}>{movie.title}</Text>
+          {/* Mobile: Title & badges below poster */}
+          {Platform.OS !== 'web' && (
+            <>
+              <View style={styles.row}>
+                <View style={styles.ratingBadge}><Text style={styles.ratingText}>{movie.rating}</Text></View>
+                <Text style={styles.duration}>{movie.duration} min</Text>
+                <Text style={styles.language}>{movie.language}</Text>
+              </View>
+              <Text style={styles.title}>{movie.title}</Text>
+              <View style={styles.genreRow}>
+                {(movie.genre || []).map((g) => (
+                  <View key={g} style={styles.genreTag}><Text style={styles.genreTagText}>{g}</Text></View>
+                ))}
+              </View>
+            </>
+          )}
 
-          {/* Genres */}
-          <View style={styles.genreRow}>
-            {(movie.genre || []).map((g) => (
-              <View key={g} style={styles.genreTag}><Text style={styles.genreTagText}>{g}</Text></View>
-            ))}
-          </View>
-
+          {/* About the Film */}
+          <Text style={styles.sectionTitle}>About The Film</Text>
           <Text style={styles.description}>{movie.description}</Text>
 
-          {/* Trailer Button */}
-          {movie.trailerUrl && (
+          {/* Mobile Trailer Button */}
+          {movie.trailerUrl && Platform.OS !== 'web' && (
             <TouchableOpacity style={styles.trailerBtn} onPress={() => setShowTrailer(true)}>
               <Ionicons name="play-circle" size={22} color="#fff" />
               <Text style={styles.trailerBtnText}>Play Trailer</Text>
@@ -133,16 +164,16 @@ export default function MovieDetail() {
           {/* Cast */}
           {movie.cast?.length > 0 && (
             <>
-              <Text style={styles.sectionTitle}>Cast</Text>
+              <Text style={styles.sectionTitle}>Cast & Crew</Text>
               {Platform.OS === 'web' ? (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingVertical: 4 }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20, paddingVertical: 4 }}>
                   {movie.cast.map((actor, idx) => (
-                    <View key={idx} style={{ alignItems: 'center', width: 80 }}>
+                    <View key={idx} style={{ alignItems: 'center', width: 90 }}>
                       <View style={styles.castAvatar}>
                         {actor.photoUrl ? (
                           <Image source={{ uri: actor.photoUrl }} style={{ width: '100%', height: '100%' }} />
                         ) : (
-                          <Ionicons name="person" size={24} color={colors.textMuted} />
+                          <Ionicons name="person" size={28} color={colors.textMuted} />
                         )}
                       </View>
                       <Text style={styles.castName} numberOfLines={2}>{actor.name}</Text>
@@ -315,51 +346,92 @@ function extractYoutubeId(url) {
 }
 
 const getStyles = (colors) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
-  posterContainer: { height: 280, position: 'relative' },
+  container: { flex: 1, backgroundColor: '#0D0D0D' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0D0D0D' },
+
+  // Hero poster
+  posterContainer: { height: Platform.OS === 'web' ? 460 : 280, position: 'relative' },
   poster: { width: '100%', height: '100%' },
-  posterFallback: { backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
-  posterOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(13, 13, 26, 0.4)' },
-  backBtn: { position: 'absolute', top: 48, left: 16, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  body: { padding: SIZES.md },
+  posterFallback: { backgroundColor: '#1A1A1A', justifyContent: 'center', alignItems: 'center' },
+  posterOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    background: Platform.OS === 'web'
+      ? 'linear-gradient(to bottom, rgba(13,13,13,0.1) 0%, rgba(13,13,13,0.6) 40%, rgba(13,13,13,0.97) 100%)'
+      : undefined,
+    backgroundColor: Platform.OS !== 'web' ? 'rgba(13,13,13,0.45)' : undefined,
+  },
+  backBtn: { position: 'absolute', top: 48, left: 16, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+
+  // Web hero overlay content
+  heroContent: { position: 'absolute', bottom: 32, left: 32, right: 32, zIndex: 5 },
+  heroTitle: { fontSize: 42, fontWeight: '900', color: '#FFFFFF', letterSpacing: 2, marginBottom: 6, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 },
+  heroMeta: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 4 },
+
+  // Hero genre tags
+  genreTagHero: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  genreTagHeroText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
+
+  // Hero CTA buttons
+  bookBtn: { backgroundColor: '#C9A227', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 6, flexDirection: 'row', alignItems: 'center' },
+  bookBtnText: { color: '#000', fontWeight: 'bold', fontSize: 15 },
+  trailerBtnHero: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 6, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' },
+  trailerBtnHeroText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+
+  // Body
+  body: { padding: SIZES.md, maxWidth: Platform.OS === 'web' ? 1100 : undefined, alignSelf: Platform.OS === 'web' ? 'center' : undefined, width: '100%' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
-  ratingBadge: { backgroundColor: colors.surfaceElevated, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  ratingText: { color: colors.accent, fontSize: 11, fontWeight: 'bold' },
-  duration: { color: colors.textSecondary, fontSize: 12 },
-  language: { color: colors.textSecondary, fontSize: 12 },
-  title: { fontSize: 24, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 8 },
+  ratingBadge: { backgroundColor: '#C9A227', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  ratingText: { color: '#000', fontSize: 11, fontWeight: 'bold' },
+  duration: { color: 'rgba(255,255,255,0.6)', fontSize: 13 },
+  language: { color: 'rgba(255,255,255,0.6)', fontSize: 13 },
+  title: { fontSize: 28, fontWeight: '900', color: '#FFFFFF', marginBottom: 10, letterSpacing: 1 },
   genreRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
-  genreTag: { backgroundColor: colors.surface, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: colors.border },
-  genreTagText: { color: colors.textSecondary, fontSize: 12 },
-  description: { color: colors.textSecondary, fontSize: 14, lineHeight: 22, marginBottom: 16 },
-  sectionTitle: { fontSize: 17, fontWeight: 'bold', color: colors.textPrimary, marginTop: 16, marginBottom: 10 },
-  castAvatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: colors.surfaceElevated, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', marginBottom: 6, borderWidth: 1, borderColor: colors.border },
-  trailerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#CC0000', borderRadius: SIZES.radius, paddingVertical: 12, paddingHorizontal: 18, alignSelf: 'flex-start', marginVertical: 12 },
-  trailerBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
-  trailerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
+  genreTag: { backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  genreTagText: { color: 'rgba(255,255,255,0.75)', fontSize: 12 },
+  description: { color: 'rgba(255,255,255,0.65)', fontSize: 14, lineHeight: 22, marginBottom: 8 },
+
+  // Section titles — gold uppercase cinema style
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: '#C9A227', marginTop: 24, marginBottom: 12, letterSpacing: 2, textTransform: 'uppercase' },
+
+  // Cast
+  castAvatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#1E1E1E', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', marginBottom: 6, borderWidth: 2, borderColor: 'rgba(201,162,39,0.4)' },
+  castName: { color: '#FFFFFF', fontSize: 12, textAlign: 'center', fontWeight: '600', marginTop: 4 },
+
+  // Mobile trailer btn
+  trailerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'transparent', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)', borderRadius: 6, paddingVertical: 11, paddingHorizontal: 18, alignSelf: 'flex-start', marginVertical: 12 },
+  trailerBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+
+  // Trailer modal
+  trailerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
   trailerContainer: { width: '90%', aspectRatio: 16 / 9, position: 'relative', backgroundColor: '#000', borderRadius: 8, overflow: 'hidden' },
   trailerClose: { position: 'absolute', top: -40, right: 0, zIndex: 10 },
-  castName: { color: colors.textPrimary, fontSize: 11, textAlign: 'center', marginTop: 4 },
-  statsCard: { backgroundColor: colors.card, borderRadius: SIZES.radius, padding: 14, borderWidth: 1, borderColor: colors.border },
+
+  // Stats
+  statsCard: { backgroundColor: '#141414', borderRadius: SIZES.radius, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', marginBottom: 8 },
   starRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-  starLabel: { color: colors.textSecondary, fontSize: 13, width: 70 },
-  starValue: { color: colors.accent, fontSize: 13, fontWeight: 'bold' },
-  dateChip: { width: 60, height: 60, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  dateChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  dateDay: { fontSize: 11, color: colors.textSecondary },
-  dateNum: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary },
-  noSlots: { color: colors.textMuted, fontSize: 14, paddingVertical: 12 },
-  cinemaGroup: { backgroundColor: colors.card, borderRadius: SIZES.radius, padding: SIZES.md, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
-  cinemaTitle: { fontSize: 15, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 12 },
+  starLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 13, width: 70 },
+  starValue: { color: '#C9A227', fontSize: 13, fontWeight: 'bold' },
+
+  // Date chips
+  dateChip: { paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: '#1A1A1A', borderWidth: 1, borderColor: '#2A2A2A', minWidth: 72 },
+  dateChipActive: { backgroundColor: '#C9A227', borderColor: '#C9A227' },
+  dateDay: { fontSize: 11, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: 1 },
+  dateNum: { fontSize: 18, fontWeight: 'bold', color: '#FFFFFF' },
+  noSlots: { color: 'rgba(255,255,255,0.4)', fontSize: 14, paddingVertical: 12 },
+
+  // Cinema groups & time chips
+  cinemaGroup: { backgroundColor: '#141414', borderRadius: SIZES.radius, padding: SIZES.md, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  cinemaTitle: { fontSize: 15, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 12 },
   slotChipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  timeChip: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, borderWidth: 1, borderColor: colors.primary },
-  timeChipTime: { color: colors.primary, fontSize: 12, fontWeight: '600' },
-  timeChipPrice: { color: colors.textSecondary, fontSize: 12 },
-  reviewCard: { backgroundColor: colors.card, borderRadius: SIZES.radius, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
-  reviewAuthor: { fontSize: 13, fontWeight: 'bold', color: colors.textPrimary },
-  reviewComment: { fontSize: 13, color: colors.textSecondary, lineHeight: 20 },
-  managerResponseContainer: { marginTop: 8, padding: 8, backgroundColor: colors.surface, borderRadius: 6, borderLeftWidth: 2, borderLeftColor: colors.primary },
-  managerResponseTitle: { fontSize: 11, fontWeight: 'bold', color: colors.primary, marginBottom: 2 },
-  managerResponseText: { fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
+  timeChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 6, borderWidth: 1, borderColor: '#C9A227', backgroundColor: 'rgba(201,162,39,0.08)' },
+  timeChipTime: { color: '#C9A227', fontSize: 13, fontWeight: '700' },
+  timeChipPrice: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
+
+  // Reviews
+  reviewCard: { backgroundColor: '#141414', borderRadius: SIZES.radius, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  reviewAuthor: { fontSize: 13, fontWeight: 'bold', color: '#FFFFFF' },
+  reviewComment: { fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 20, marginTop: 4 },
+  managerResponseContainer: { marginTop: 10, padding: 10, backgroundColor: 'rgba(201,162,39,0.08)', borderRadius: 6, borderLeftWidth: 2, borderLeftColor: '#C9A227' },
+  managerResponseTitle: { fontSize: 11, fontWeight: 'bold', color: '#C9A227', marginBottom: 2 },
+  managerResponseText: { fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 18 },
 });

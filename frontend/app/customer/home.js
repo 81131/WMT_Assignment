@@ -122,15 +122,19 @@ export default function CustomerHome() {
   // --- Render ---
 
   const MovieCard = ({ item }) => (
-    <TouchableOpacity style={styles.card} onPress={() => router.push(`/customer/movie/${item._id}`)}>
+    <TouchableOpacity style={styles.card} onPress={() => router.push(`/customer/movie/${item._id}`)}
+      {...(Platform.OS === 'web' && { accessibilityRole: 'link' })}
+    >
       <View style={styles.cardImageContainer}>
         {item.posterUrl ? (
           <Image source={{ uri: item.posterUrl }} style={styles.poster} />
         ) : (
           <View style={[styles.poster, styles.posterPlaceholder]}>
-            <Ionicons name="film-outline" size={40} color={colors.textMuted} />
+            <Ionicons name="film-outline" size={40} color="rgba(255,255,255,0.3)" />
           </View>
         )}
+        {/* Gradient fade at bottom of card */}
+        <View style={styles.cardGradient} />
         <View style={styles.badgeTopLeft}>
           <Text style={styles.badgeTextBlack}>In Cinemas</Text>
         </View>
@@ -141,8 +145,8 @@ export default function CustomerHome() {
       <View style={styles.cardBody}>
         <Text style={styles.movieTitle} numberOfLines={1}>{item.title}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-          <Ionicons name="star" size={14} color={colors.accent} />
-          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: 'bold' }}>
+          <Ionicons name="star" size={12} color="#C9A227" />
+          <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: '600' }}>
             {item.avgStarRating > 0 ? item.avgStarRating.toFixed(1) : 'New'}
           </Text>
         </View>
@@ -152,55 +156,50 @@ export default function CustomerHome() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Header / Navbar */}
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800', letterSpacing: 1 }}>CinemaApp</Text>
-        </View>
-        <View style={{ flexDirection: 'row', gap: 16 }}>
+        <Text style={styles.logoText}>CinemaApp</Text>
+        <View style={{ flexDirection: 'row', gap: 24, alignItems: 'center' }}>
           <TouchableOpacity onPress={() => router.push('/customer/tickets')}>
-             <Text style={{ color: colors.textPrimary, fontWeight: 'bold' }}>My Bookings</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => logout()}>
-             <Text style={{ color: colors.textSecondary }}>Logout</Text>
+             <Text style={styles.navLink}>My Bookings</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView 
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A227" />}
         contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* Quick Book Widget */}
         <View style={styles.quickBookWrapper}>
-          <Text style={styles.sectionTitleQb}>QUICK BOOK</Text>
+          <Text style={styles.sectionTitleQb}>Quick Book</Text>
           <View style={styles.quickBookRow}>
             <TouchableOpacity style={styles.qbDropdown} onPress={() => openSelect('movie')}>
-              <Text style={{ color: qbMovie ? colors.textPrimary : colors.textMuted }} numberOfLines={1}>
+              <Text style={{ color: qbMovie ? '#FFFFFF' : 'rgba(255,255,255,0.4)', fontSize: 14 }} numberOfLines={1}>
                 {qbMovie ? qbMovie.title : 'Select Movie'}
               </Text>
-              <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+              <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.4)" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.qbDropdown, !qbMovie && { opacity: 0.5 }]} disabled={!qbMovie} onPress={() => openSelect('date')}>
-              <Text style={{ color: qbDate ? colors.textPrimary : colors.textMuted }} numberOfLines={1}>
+            <TouchableOpacity style={[styles.qbDropdown, !qbMovie && { opacity: 0.4 }]} disabled={!qbMovie} onPress={() => openSelect('date')}>
+              <Text style={{ color: qbDate ? '#FFFFFF' : 'rgba(255,255,255,0.4)', fontSize: 14 }} numberOfLines={1}>
                 {qbDate ? qbDate.substring(0, 10) : 'Select Date'}
               </Text>
-              <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+              <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.4)" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.qbDropdown, !qbDate && { opacity: 0.5 }]} disabled={!qbDate} onPress={() => openSelect('cinema')}>
-              <Text style={{ color: qbCinema ? colors.textPrimary : colors.textMuted }} numberOfLines={1}>
+            <TouchableOpacity style={[styles.qbDropdown, !qbDate && { opacity: 0.4 }]} disabled={!qbDate} onPress={() => openSelect('cinema')}>
+              <Text style={{ color: qbCinema ? '#FFFFFF' : 'rgba(255,255,255,0.4)', fontSize: 14 }} numberOfLines={1}>
                 {qbCinema ? qbCinema.label : 'Select Cinema'}
               </Text>
-              <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+              <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.4)" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.qbDropdown, !qbCinema && { opacity: 0.5 }]} disabled={!qbCinema} onPress={() => openSelect('time')}>
-              <Text style={{ color: qbTime ? colors.textPrimary : colors.textMuted }} numberOfLines={1}>
+            <TouchableOpacity style={[styles.qbDropdown, !qbCinema && { opacity: 0.4 }]} disabled={!qbCinema} onPress={() => openSelect('time')}>
+              <Text style={{ color: qbTime ? '#FFFFFF' : 'rgba(255,255,255,0.4)', fontSize: 14 }} numberOfLines={1}>
                 {qbTime ? new Date(qbTime.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Time'}
               </Text>
-              <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+              <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.4)" />
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -242,7 +241,7 @@ export default function CustomerHome() {
               <ScrollView style={{ maxHeight: 300 }}>
                 {selectModal.options.map((opt, i) => (
                   <TouchableOpacity key={i} style={styles.modalOption} onPress={() => handleSelect(opt)}>
-                    <Text style={{ color: colors.textPrimary, fontSize: 16 }}>{opt.label}</Text>
+                    <Text style={{ color: '#FFFFFF', fontSize: 16 }}>{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -255,36 +254,56 @@ export default function CustomerHome() {
 }
 
 const getStyles = (colors) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SIZES.md, height: 70, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  
-  quickBookWrapper: { backgroundColor: colors.surfaceElevated, margin: SIZES.md, padding: SIZES.md, borderRadius: SIZES.radiusLg, borderWidth: 1, borderColor: colors.border },
-  sectionTitleQb: { color: colors.primary, fontSize: 14, fontWeight: 'bold', marginBottom: 12, letterSpacing: 1 },
+  container: { flex: 1, backgroundColor: '#0D0D0D' },
+
+  // Navbar
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: SIZES.lg, height: 64,
+    borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#0D0D0D',
+  },
+  logoText: { color: '#C9A227', fontSize: 22, fontWeight: '900', letterSpacing: 2 },
+  navLink: { color: 'rgba(255,255,255,0.8)', fontWeight: '600', fontSize: 14 },
+
+  // Quick book
+  quickBookWrapper: { backgroundColor: '#141414', margin: SIZES.md, padding: SIZES.md, borderRadius: SIZES.radiusLg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  sectionTitleQb: { color: '#C9A227', fontSize: 13, fontWeight: '800', marginBottom: 12, letterSpacing: 2 },
   quickBookRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  qbDropdown: { flex: 1, minWidth: 120, height: 44, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12 },
-  qbBtn: { flex: 1, minWidth: 120, height: 44, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', borderRadius: 8 },
+  qbDropdown: {
+    flex: 1, minWidth: 120, height: 44,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 8, paddingHorizontal: 12
+  },
+  qbBtn: { flex: 1, minWidth: 120, height: 44, backgroundColor: '#C9A227', justifyContent: 'center', alignItems: 'center', borderRadius: 8 },
   qbBtnText: { color: '#000', fontWeight: 'bold', fontSize: 15 },
 
-  tabsRow: { flexDirection: 'row', paddingHorizontal: SIZES.md, marginBottom: SIZES.md, gap: 12 },
-  tabBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: colors.border },
-  tabBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabBtnText: { color: colors.textSecondary, fontWeight: '600' },
-  tabBtnTextActive: { color: '#000' },
+  // Tabs
+  tabsRow: { flexDirection: 'row', paddingHorizontal: SIZES.md, marginBottom: SIZES.md, gap: 10 },
+  tabBtn: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 6, backgroundColor: '#1A1A1A', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  tabBtnActive: { backgroundColor: '#C9A227', borderColor: '#C9A227' },
+  tabBtnText: { color: 'rgba(255,255,255,0.55)', fontWeight: '600', fontSize: 14 },
+  tabBtnTextActive: { color: '#000', fontWeight: '700' },
 
+  // Movie grid & cards
   movieGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SIZES.md, justifyContent: 'flex-start', gap: 16 },
   card: { width: Platform.OS === 'web' ? 200 : '48%', marginBottom: 20 },
-  cardImageContainer: { position: 'relative', width: '100%', aspectRatio: 0.67, borderRadius: SIZES.radius, overflow: 'hidden' },
+  cardImageContainer: { position: 'relative', width: '100%', aspectRatio: 0.67, borderRadius: SIZES.radius, overflow: 'hidden', backgroundColor: '#1A1A1A' },
   poster: { width: '100%', height: '100%' },
-  posterPlaceholder: { backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
-  badgeTopLeft: { position: 'absolute', top: 8, left: 36, backgroundColor: colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  posterPlaceholder: { justifyContent: 'center', alignItems: 'center' },
+  cardGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, backgroundColor: 'rgba(0,0,0,0.4)' },
+  badgeTopLeft: { position: 'absolute', top: 8, left: 36, backgroundColor: '#C9A227', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3 },
   badgeTextBlack: { color: '#000', fontSize: 10, fontWeight: 'bold' },
-  badgeTopLeftRating: { position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#444' },
+  badgeTopLeftRating: { position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3 },
   badgeTextWhite: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
   cardBody: { marginTop: 8 },
-  movieTitle: { fontSize: 15, fontWeight: 'bold', color: colors.textPrimary },
+  movieTitle: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '85%', backgroundColor: colors.surface, borderRadius: SIZES.radiusLg, padding: SIZES.md, borderWidth: 1, borderColor: colors.border },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 12, textTransform: 'capitalize' },
-  modalOption: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  // Select Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { width: '85%', backgroundColor: '#141414', borderRadius: SIZES.radiusLg, padding: SIZES.md, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 12, textTransform: 'capitalize' },
+  modalOption: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
 });
