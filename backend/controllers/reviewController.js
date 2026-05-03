@@ -7,11 +7,13 @@ exports.getReviews = async (req, res) => {
   if (req.query.movie) query.movie = req.query.movie;
   if (req.query.hall) query.hall = req.query.hall;
   if (req.query.branch) query.branch = req.query.branch;
+  if (req.query.booking) query.booking = req.query.booking;
   let reviews = await Review.find(query)
     .populate('customer', 'name')
     .populate('movie', 'title')
     .populate('hall', 'name')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
     
   if (req.user.role === 'customer') {
     reviews = reviews.map(r => {

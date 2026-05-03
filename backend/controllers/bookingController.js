@@ -220,3 +220,14 @@ exports.cancelBooking = async (req, res) => {
   await booking.save();
   res.json({ success: true, message: 'Booking cancelled.' });
 };
+
+// DELETE /api/bookings/:id
+exports.deleteBooking = async (req, res) => {
+  const booking = await Booking.findOne({ _id: req.params.id, customer: req.user._id });
+  if (!booking) return res.status(404).json({ success: false, message: 'Booking not found.' });
+  if (booking.status === 'used') {
+    return res.status(400).json({ success: false, message: 'Cannot delete a ticket that has already been used.' });
+  }
+  await booking.deleteOne();
+  res.json({ success: true, message: 'Booking deleted permanently. No refund is possible.' });
+};

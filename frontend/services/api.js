@@ -135,6 +135,7 @@ export const bookingAPI = {
   processPayment: (data) => api.post('/payments/process', data),
   getMyBookings: () => api.get('/bookings/my'),
   cancelBooking: (id) => api.put(`/bookings/${id}/cancel`),
+  deleteBooking: (id) => api.delete(`/bookings/${id}`),
   getMyTickets: () => api.get('/tickets/my'),
   getTicketByCode: (code) => api.get(`/tickets/${code}`),
   validateTicket: (code) => api.post(`/tickets/${code}/validate`),

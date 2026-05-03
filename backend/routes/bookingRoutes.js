@@ -13,6 +13,7 @@ router.post('/payments/process', protect, requireRole('customer'), ctrl.processP
 // Bookings
 router.get('/bookings/my', protect, requireRole('customer'), ctrl.getMyBookings);
 router.put('/bookings/:id/cancel', protect, requireRole('customer'), ctrl.cancelBooking);
+router.delete('/bookings/:id', protect, requireRole('customer'), ctrl.deleteBooking);
 
 // Tickets
 router.get('/tickets/my', protect, requireRole('customer'), ctrl.getMyTickets);

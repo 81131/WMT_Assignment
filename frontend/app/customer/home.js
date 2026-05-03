@@ -140,6 +140,12 @@ export default function CustomerHome() {
       </View>
       <View style={styles.cardBody}>
         <Text style={styles.movieTitle} numberOfLines={1}>{item.title}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+          <Ionicons name="star" size={14} color={colors.accent} />
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: 'bold' }}>
+            {item.avgStarRating > 0 ? item.avgStarRating.toFixed(1) : 'New'}
+          </Text>
+        </View>
       </View>
     </TouchableOpacity>
   );

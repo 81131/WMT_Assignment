@@ -27,6 +27,7 @@ export default function TicketsScreen() {
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [reviewForm, setReviewForm] = useState({ movieRating: 5, hallRating: 5, facilityRating: 5, comment: '' });
+  const [existingReviewId, setExistingReviewId] = useState(null);
   const [submittingReview, setSubmittingReview] = useState(false);
   const router = useRouter();
 
@@ -41,21 +42,40 @@ export default function TicketsScreen() {
 
   useEffect(() => { fetchTickets(); }, []);
 
-  const openReviewModal = (ticket) => {
+  const openReviewModal = async (ticket) => {
     setSelectedTicket(ticket);
     setReviewForm({ movieRating: 5, hallRating: 5, facilityRating: 5, comment: '' });
+    setExistingReviewId(null);
     setReviewModalVisible(true);
+    
+    try {
+      const res = await reviewAPI.getAll({ booking: ticket._id });
+      if (res.data.reviews?.length > 0) {
+        const rev = res.data.reviews[0];
+        setExistingReviewId(rev._id);
+        setReviewForm({
+          movieRating: rev.movieRating,
+          hallRating: rev.hallRating,
+          facilityRating: rev.facilityRating,
+          comment: rev.comment || ''
+        });
+      }
+    } catch (e) {
+      console.log('Could not fetch existing review', e);
+    }
   };
 
   const submitReview = async () => {
     if (!selectedTicket) return;
     setSubmittingReview(true);
     try {
-      await reviewAPI.create({
-        bookingId: selectedTicket._id,
-        ...reviewForm
-      });
-      alert('Review submitted successfully! Thank you.');
+      if (existingReviewId) {
+        await reviewAPI.update(existingReviewId, reviewForm);
+        alert('Review updated successfully!');
+      } else {
+        await reviewAPI.create({ bookingId: selectedTicket._id, ...reviewForm });
+        alert('Review submitted successfully! Thank you.');
+      }
       setReviewModalVisible(false);
       fetchTickets(); // Refresh to update status if needed
     } catch (e) {

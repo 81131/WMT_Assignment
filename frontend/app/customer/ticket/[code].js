@@ -20,13 +20,26 @@ export default function TicketDetail() {
   const [showReview, setShowReview] = useState(false);
   const [ratings, setRatings] = useState({ movieRating: 5, hallRating: 5, facilityRating: 5 });
   const [comment, setComment] = useState('');
+  const [existingReviewId, setExistingReviewId] = useState(null);
 
   useEffect(() => { fetchTicket(); }, [code]);
 
   const fetchTicket = async () => {
     try {
       const { data } = await bookingAPI.getTicketByCode(code);
-      setTicket(data.ticket);
+      const fetchedTicket = data.ticket;
+      setTicket(fetchedTicket);
+      
+      // Also check if a review exists for this booking
+      if (fetchedTicket.status === 'used') {
+        const reviewRes = await reviewAPI.getAll({ booking: fetchedTicket._id });
+        if (reviewRes.data.reviews?.length > 0) {
+          const rev = reviewRes.data.reviews[0];
+          setExistingReviewId(rev._id);
+          setRatings({ movieRating: rev.movieRating, hallRating: rev.hallRating, facilityRating: rev.facilityRating });
+          setComment(rev.comment || '');
+        }
+      }
     } catch {
       Alert.alert('Error', 'Ticket not found.');
       if (router.canGoBack()) router.back();
@@ -38,12 +51,41 @@ export default function TicketDetail() {
 
   const submitReview = async () => {
     try {
-      await reviewAPI.create({ bookingId: ticket._id, ...ratings, comment });
-      Alert.alert('Thank you!', 'Your review has been submitted.');
+      if (existingReviewId) {
+        await reviewAPI.update(existingReviewId, { ...ratings, comment });
+        Alert.alert('Success', 'Your review has been updated.');
+      } else {
+        const res = await reviewAPI.create({ bookingId: ticket._id, ...ratings, comment });
+        setExistingReviewId(res.data.review._id);
+        Alert.alert('Thank you!', 'Your review has been submitted.');
+      }
       setShowReview(false);
     } catch (err) {
       Alert.alert('Error', err.response?.data?.message || 'Could not submit review.');
     }
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Ticket Permanently?',
+      'Are you sure you want to delete this ticket? Refunds are NOT possible and this action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await bookingAPI.deleteBooking(ticket._id);
+              Alert.alert('Deleted', 'Ticket has been permanently deleted.');
+              router.replace('/customer/tickets');
+            } catch (err) {
+              Alert.alert('Error', err.response?.data?.message || 'Could not delete ticket.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const DetailRow = ({ icon, label, value }) => (
@@ -70,7 +112,7 @@ export default function TicketDetail() {
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
   if (!ticket) return null;
 
-  const canReview = ticket.status === 'used' || ticket.status === 'confirmed';
+  const canReview = ticket.status === 'used';
 
   return (
     <View style={styles.container}>
@@ -117,20 +159,41 @@ export default function TicketDetail() {
             {!showReview ? (
               <TouchableOpacity style={styles.reviewBtn} onPress={() => setShowReview(true)}>
                 <Ionicons name="star-outline" size={18} color={colors.accent} />
-                <Text style={styles.reviewBtnText}>Write a Review</Text>
+                <Text style={styles.reviewBtnText}>{existingReviewId ? 'Edit Your Review' : 'Write a Review'}</Text>
               </TouchableOpacity>
             ) : (
               <View>
                 <StarPicker label="Movie" value={ratings.movieRating} onChange={(v) => setRatings((r) => ({ ...r, movieRating: v }))} />
                 <StarPicker label="Hall" value={ratings.hallRating} onChange={(v) => setRatings((r) => ({ ...r, hallRating: v }))} />
                 <StarPicker label="Facilities" value={ratings.facilityRating} onChange={(v) => setRatings((r) => ({ ...r, facilityRating: v }))} />
+                
+                <Text style={[styles.starPickerLabel, { marginTop: 10 }]}>Add Comment</Text>
+                <TextInput
+                  style={[styles.input, { height: 80, marginBottom: 15, padding: 12, textAlignVertical: 'top' }]}
+                  placeholder="Tell us what you thought..."
+                  placeholderTextColor={colors.textMuted}
+                  multiline
+                  numberOfLines={3}
+                  value={comment}
+                  onChangeText={setComment}
+                />
+
                 <TouchableOpacity style={styles.submitBtn} onPress={submitReview}>
-                  <Text style={styles.submitBtnText}>Submit Review</Text>
+                  <Text style={styles.submitBtnText}>{existingReviewId ? 'Update Review' : 'Submit Review'}</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
         )}
+
+        {/* Delete section */}
+        {ticket.status !== 'used' && (
+          <TouchableOpacity style={[styles.submitBtn, { backgroundColor: '#ffeef0', borderWidth: 1, borderColor: colors.error, marginTop: SIZES.lg }]} onPress={handleDelete}>
+            <Ionicons name="trash-outline" size={18} color={colors.error} />
+            <Text style={[styles.submitBtnText, { color: colors.error, marginLeft: 8 }]}>Delete Ticket</Text>
+          </TouchableOpacity>
+        )}
+
         <View style={{ height: 30 }} />
       </ScrollView>
     </View>
@@ -165,4 +228,5 @@ const getStyles = (colors) => StyleSheet.create({
   starPickerLabel: { color: colors.textSecondary, fontSize: 13, marginBottom: 6 },
   submitBtn: { backgroundColor: colors.primary, borderRadius: SIZES.radius, height: 48, justifyContent: 'center', alignItems: 'center', marginTop: SIZES.sm },
   submitBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
+  input: { backgroundColor: colors.surface, borderRadius: SIZES.radius, borderWidth: 1, borderColor: colors.border, color: colors.textPrimary },
 });

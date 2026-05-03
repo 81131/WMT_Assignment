@@ -19,7 +19,17 @@ exports.getMovies = async (req, res) => {
     ];
   }
 
-  const movies = await Movie.find(query).populate('branches', 'name city');
+  const movies = await Movie.find(query).populate('branches', 'name city').lean();
+
+  const Review = require('../models/Review');
+  for (let m of movies) {
+    const stats = await Review.aggregate([
+      { $match: { movie: m._id } },
+      { $group: { _id: null, avgRating: { $avg: '$movieRating' } } }
+    ]);
+    m.avgStarRating = stats[0] ? Math.round(stats[0].avgRating * 10) / 10 : 0;
+  }
+
   res.json({ success: true, count: movies.length, movies });
 };
 
