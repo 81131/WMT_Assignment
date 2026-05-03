@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, Image, TouchableOpacity,
   StyleSheet, ActivityIndicator, FlatList, Alert, Platform, Modal
@@ -23,6 +23,8 @@ export default function MovieDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(null);
   const [showTrailer, setShowTrailer] = useState(false);
+  const scrollRef = useRef(null);
+  const bookSectionY = useRef(0);
 
   // Generate next 14 days pool to check availability
   const DATES = Array.from({ length: 14 }, (_, i) => {
@@ -88,7 +90,7 @@ export default function MovieDetail() {
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
         {/* Hero Banner — full-width poster with deep gradient */}
         <View style={styles.posterContainer}>
           {movie.posterUrl ? (
@@ -117,7 +119,7 @@ export default function MovieDetail() {
               <Text style={styles.heroTitle}>{movie.title.toUpperCase()}</Text>
               <Text style={styles.heroMeta}>{movie.language} · {movie.duration} min</Text>
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
-                <TouchableOpacity style={styles.bookBtn} onPress={() => {}}>
+                <TouchableOpacity style={styles.bookBtn} onPress={() => scrollRef.current?.scrollTo({ y: bookSectionY.current, animated: true })}>
                   <Text style={styles.bookBtnText}>Book Tickets</Text>
                 </TouchableOpacity>
                 {movie.trailerUrl && (
@@ -209,8 +211,10 @@ export default function MovieDetail() {
             </View>
           )}
 
-          {/* Date picker — only available dates */}
-          <Text style={styles.sectionTitle}>Select Date</Text>
+          {/* Select Date — anchor point for scroll */}
+          <View onLayout={(e) => { bookSectionY.current = e.nativeEvent.layout.y + 460; }}>
+            <Text style={styles.sectionTitle}>Book Tickets</Text>
+          </View>
           {availableDates.length === 0 ? (
             <Text style={styles.noSlots}>No upcoming showtimes scheduled.</Text>
           ) : (
@@ -378,7 +382,7 @@ const getStyles = (colors) => StyleSheet.create({
   trailerBtnHeroText: { color: '#fff', fontWeight: '600', fontSize: 15 },
 
   // Body
-  body: { padding: SIZES.md, maxWidth: Platform.OS === 'web' ? 1100 : undefined, alignSelf: Platform.OS === 'web' ? 'center' : undefined, width: '100%' },
+  body: { padding: SIZES.md, width: '100%' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
   ratingBadge: { backgroundColor: '#C9A227', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
   ratingText: { color: '#000', fontSize: 11, fontWeight: 'bold' },

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, Image, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert,
+  StyleSheet, ActivityIndicator, Alert, Platform, TextInput,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { bookingAPI, reviewAPI } from '../../../services/api';
@@ -65,27 +65,36 @@ export default function TicketDetail() {
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete Ticket Permanently?',
-      'Are you sure you want to delete this ticket? Refunds are NOT possible and this action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await bookingAPI.deleteBooking(ticket._id);
-              Alert.alert('Deleted', 'Ticket has been permanently deleted.');
-              router.replace('/customer/tickets');
-            } catch (err) {
-              Alert.alert('Error', err.response?.data?.message || 'Could not delete ticket.');
-            }
-          }
-        }
-      ]
-    );
+  const handleDelete = async () => {
+    const confirmed = Platform.OS === 'web'
+      ? window.confirm('Delete Ticket Permanently?\n\nRefunds are NOT possible and this action cannot be undone.')
+      : await new Promise((resolve) =>
+          Alert.alert(
+            'Delete Ticket Permanently?',
+            'Are you sure you want to delete this ticket? Refunds are NOT possible and this action cannot be undone.',
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+            ]
+          )
+        );
+
+    if (!confirmed) return;
+    try {
+      await bookingAPI.deleteBooking(ticket._id);
+      if (Platform.OS === 'web') {
+        window.alert('Ticket has been permanently deleted.');
+        router.replace('/customer/tickets');
+      } else {
+        Alert.alert('Deleted', 'Ticket has been permanently deleted.', [
+          { text: 'OK', onPress: () => router.replace('/customer/tickets') }
+        ]);
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Could not delete ticket.';
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Error', msg);
+    }
   };
 
   const DetailRow = ({ icon, label, value }) => (
