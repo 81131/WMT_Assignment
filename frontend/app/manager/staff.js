@@ -70,6 +70,26 @@ export default function StaffScreen() {
     });
   };
 
+  const handleCreate = async () => {
+    if (!form.name || !form.email || !form.password)
+      return Alert.alert('Error', 'Name, email and password are required.');
+    if (!form.assignedBranch)
+      return Alert.alert('Error', 'Please assign a branch.');
+    if (form.role === 'hall_employee' && form.assignedHalls.length === 0)
+      return Alert.alert('Error', 'Please assign at least one hall for hall employees.');
+    setSaving(true);
+    try {
+      await authAPI.createStaff(form);
+      setShowForm(false);
+      setForm({ name: '', email: '', password: '', role: 'hall_employee', assignedBranch: '', assignedHalls: [] });
+      fetchData();
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.message || 'Could not create account.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleEdit = (user) => {
     setEditingId(user._id);
     setForm({
