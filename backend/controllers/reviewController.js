@@ -14,7 +14,7 @@ exports.getReviews = async (req, res) => {
     .populate('hall', 'name')
     .sort({ createdAt: -1 })
     .lean();
-    
+
   if (req.user.role === 'customer') {
     reviews = reviews.map(r => {
       if (r.isBlurred) {
@@ -102,7 +102,7 @@ exports.getMovieStats = async (req, res) => {
 exports.moderateReview = async (req, res) => {
   const { isBlurred, managerResponse } = req.body;
   const review = await Review.findById(req.params.id);
-  
+
   if (!review) return res.status(404).json({ success: false, message: 'Review not found.' });
 
   // Branch managers can only moderate reviews for their branch

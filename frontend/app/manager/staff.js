@@ -4,7 +4,7 @@ import {
   Alert, ActivityIndicator, TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { authAPI, branchAPI } from '../../services/api';
+import { authAPI, branchAPI, hallAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { SIZES, ROLES } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,19 +27,22 @@ export default function StaffScreen() {
 
   const [staff,    setStaff]    = useState([]);
   const [branches, setBranches] = useState([]);
+  const [halls,    setHalls]    = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving,   setSaving]   = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     name: '', email: '', password: '',
-    role: 'hall_employee', assignedBranch: '',
+    role: 'hall_employee', assignedBranch: '', assignedHalls: [],
   });
 
   const fetchData = async () => {
     try {
-      const [usersRes, branchRes] = await Promise.all([
+      const [usersRes, branchRes, hallRes] = await Promise.all([
         authAPI.getUsers(),
         branchAPI.getAll(),
+        hallAPI.getAll(),
       ]);
       setStaff(
         usersRes.data.users.filter((u) =>
@@ -47,6 +50,7 @@ export default function StaffScreen() {
         )
       );
       setBranches(branchRes.data.branches);
+      setHalls(hallRes.data.halls);
     } catch {
       Alert.alert('Error', 'Could not load staff list.');
     } finally {
@@ -56,21 +60,50 @@ export default function StaffScreen() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const setField = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+  const setField = (key, val) => {
+    setForm((f) => {
+      const newForm = { ...f, [key]: val };
+      if (key === 'assignedBranch') {
+        newForm.assignedHalls = []; // Reset halls when branch changes
+      }
+      return newForm;
+    });
+  };
 
-  const handleCreate = async () => {
-    if (!form.name || !form.email || !form.password)
-      return Alert.alert('Error', 'Name, email and password are required.');
+  const handleEdit = (user) => {
+    setEditingId(user._id);
+    setForm({
+      name: user.name,
+      email: user.email,
+      password: '',
+      role: user.role,
+      assignedBranch: user.assignedBranch?._id || '',
+      assignedHalls: user.assignedHalls?.map(h => h._id) || [],
+    });
+    setShowForm(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!form.name || !form.email)
+      return Alert.alert('Error', 'Name and email are required.');
     if (!form.assignedBranch)
       return Alert.alert('Error', 'Please assign a branch.');
+    if (form.role === 'hall_employee' && form.assignedHalls.length === 0)
+      return Alert.alert('Error', 'Please assign at least one hall for hall employees.');
     setSaving(true);
     try {
-      await authAPI.createStaff(form);
+      await authAPI.updateUser(editingId, {
+        name: form.name,
+        role: form.role,
+        assignedBranch: form.assignedBranch,
+        assignedHalls: form.assignedHalls,
+      });
       setShowForm(false);
-      setForm({ name: '', email: '', password: '', role: 'hall_employee', assignedBranch: '' });
+      setEditingId(null);
+      setForm({ name: '', email: '', password: '', role: 'hall_employee', assignedBranch: '', assignedHalls: [] });
       fetchData();
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Could not create account.');
+      Alert.alert('Error', err.response?.data?.message || 'Could not update account.');
     } finally {
       setSaving(false);
     }
@@ -85,7 +118,15 @@ export default function StaffScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Staff</Text>
         {isMain && (
-          <TouchableOpacity onPress={() => setShowForm(!showForm)}>
+          <TouchableOpacity onPress={() => {
+            if (showForm) {
+              setShowForm(false);
+              setEditingId(null);
+              setForm({ name: '', email: '', password: '', role: 'hall_employee', assignedBranch: '', assignedHalls: [] });
+            } else {
+              setShowForm(true);
+            }
+          }}>
             <Ionicons
               name={showForm ? 'close-circle' : 'add-circle'}
               size={26}
@@ -99,12 +140,12 @@ export default function StaffScreen() {
         {/* Add-staff form (main manager only) */}
         {showForm && isMain && (
           <View style={styles.form}>
-            <Text style={styles.formTitle}>New Staff Account</Text>
+            <Text style={styles.formTitle}>{editingId ? 'Edit Staff Account' : 'New Staff Account'}</Text>
 
             {[
               { label: 'Full Name',  key: 'name',     placeholder: 'e.g. Kamal Perera',   capitalize: 'words' },
               { label: 'Email',      key: 'email',    placeholder: 'staff@cinema.lk',      keyboard: 'email-address', capitalize: 'none' },
-              { label: 'Password',   key: 'password', placeholder: 'Min 8 characters',     secure: true },
+              ...(editingId ? [] : [{ label: 'Password',   key: 'password', placeholder: 'Min 8 characters',     secure: true }]),
             ].map(({ label, key, placeholder, keyboard, capitalize, secure }) => (
               <View key={key} style={{ marginBottom: 12 }}>
                 <Text style={styles.label}>{label}</Text>
@@ -154,12 +195,47 @@ export default function StaffScreen() {
               </TouchableOpacity>
             ))}
 
-            <TouchableOpacity style={styles.createBtn} onPress={handleCreate} disabled={saving}>
-              {saving
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.createBtnText}>Create Account</Text>
-              }
-            </TouchableOpacity>
+            {/* Hall selector for hall employees */}
+            {form.role === 'hall_employee' && (
+              <>
+                <Text style={styles.label}>Assign Halls *</Text>
+                {halls.filter(h => h.branch._id === form.assignedBranch).map((h) => (
+                  <TouchableOpacity
+                    key={h._id}
+                    style={[styles.branchOpt, form.assignedHalls.includes(h._id) && styles.branchOptActive]}
+                    onPress={() => {
+                      const newHalls = form.assignedHalls.includes(h._id)
+                        ? form.assignedHalls.filter(id => id !== h._id)
+                        : [...form.assignedHalls, h._id];
+                      setField('assignedHalls', newHalls);
+                    }}
+                  >
+                    <Text style={{ color: form.assignedHalls.includes(h._id) ? '#fff' : colors.textPrimary }}>
+                      {h.name}
+                    </Text>
+                    {form.assignedHalls.includes(h._id) && (
+                      <Ionicons name="checkmark" size={16} color="#fff" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity style={[styles.createBtn, { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]} onPress={() => {
+                setShowForm(false);
+                setEditingId(null);
+                setForm({ name: '', email: '', password: '', role: 'hall_employee', assignedBranch: '', assignedHalls: [] });
+              }}>
+                <Text style={[styles.createBtnText, { color: colors.textPrimary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.createBtn, { flex: 1 }]} onPress={editingId ? handleUpdate : handleCreate} disabled={saving}>
+                {saving
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.createBtnText}>{editingId ? 'Update' : 'Create'}</Text>
+                }
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -174,7 +250,7 @@ export default function StaffScreen() {
           staff.map((item) => {
             const cfg = ROLE_CONFIG[item.role];
             return (
-              <View key={item._id} style={styles.card}>
+              <TouchableOpacity key={item._id} style={styles.card} onPress={() => handleEdit(item)}>
                 <View style={[styles.avatar, { backgroundColor: cfg.color + '22' }]}>
                   <Text style={[styles.avatarText, { color: cfg.color }]}>
                     {item.name[0].toUpperCase()}
@@ -189,8 +265,12 @@ export default function StaffScreen() {
                   {item.assignedBranch?.name && (
                     <Text style={styles.branchText}>{item.assignedBranch.name}</Text>
                   )}
+                  {item.role === 'hall_employee' && item.assignedHalls?.length > 0 && (
+                    <Text style={styles.branchText}>Halls: {item.assignedHalls.map(h => h.name).join(', ')}</Text>
+                  )}
                 </View>
-              </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
             );
           })
         )}

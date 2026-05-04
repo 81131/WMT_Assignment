@@ -111,7 +111,7 @@ exports.createStaff = async (req, res) => {
 
 // GET /api/auth/users  (main_manager only)
 exports.getAllUsers = async (req, res) => {
-  const users = await User.find().select('-passwordHash -refreshToken').populate('assignedBranch', 'name city');
+  const users = await User.find().select('-passwordHash -refreshToken').populate('assignedBranch', 'name city').populate('assignedHalls', 'name');
   res.json({ success: true, count: users.length, users });
 };
 

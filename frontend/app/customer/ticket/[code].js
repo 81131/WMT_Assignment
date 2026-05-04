@@ -65,6 +65,32 @@ export default function TicketDetail() {
     }
   };
 
+  const handleDeleteReview = async () => {
+    const confirmed = Platform.OS === 'web'
+      ? window.confirm('Delete your review permanently?\n\nThis action cannot be undone.')
+      : await new Promise((resolve) =>
+          Alert.alert(
+            'Delete Review Permanently?',
+            'Are you sure you want to delete your review? This action cannot be undone.',
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+            ]
+          )
+        );
+
+    if (!confirmed) return;
+    try {
+      await reviewAPI.delete(existingReviewId);
+      setExistingReviewId(null);
+      setRatings({ movieRating: 5, hallRating: 5, facilityRating: 5 });
+      setComment('');
+      Alert.alert('Deleted', 'Your review has been deleted.');
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.message || 'Could not delete review.');
+    }
+  };
+
   const handleDelete = async () => {
     const confirmed = Platform.OS === 'web'
       ? window.confirm('Delete Ticket Permanently?\n\nRefunds are NOT possible and this action cannot be undone.')
@@ -166,10 +192,17 @@ export default function TicketDetail() {
           <View style={styles.reviewSection}>
             <Text style={styles.reviewTitle}>Rate Your Experience</Text>
             {!showReview ? (
-              <TouchableOpacity style={styles.reviewBtn} onPress={() => setShowReview(true)}>
-                <Ionicons name="star-outline" size={18} color={colors.accent} />
-                <Text style={styles.reviewBtnText}>{existingReviewId ? 'Edit Your Review' : 'Write a Review'}</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity style={[styles.reviewBtn, { flex: 1 }]} onPress={() => setShowReview(true)}>
+                  <Ionicons name="star-outline" size={18} color={colors.accent} />
+                  <Text style={styles.reviewBtnText}>{existingReviewId ? 'Edit Your Review' : 'Write a Review'}</Text>
+                </TouchableOpacity>
+                {existingReviewId && (
+                  <TouchableOpacity style={[styles.reviewBtn, { backgroundColor: colors.error + '22', borderColor: colors.error }]} onPress={handleDeleteReview}>
+                    <Ionicons name="trash-outline" size={18} color={colors.error} />
+                  </TouchableOpacity>
+                )}
+              </View>
             ) : (
               <View>
                 <StarPicker label="Movie" value={ratings.movieRating} onChange={(v) => setRatings((r) => ({ ...r, movieRating: v }))} />
